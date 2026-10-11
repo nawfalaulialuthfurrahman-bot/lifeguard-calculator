@@ -1,0 +1,999 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Lifeguard NOW Impact Calculator by Group 17, Erasmus University Rotterdam. Estimates what workforce strain costs and what Lifeguard NOW returns after its full cost.">
+<style>body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style>
+<title>Lifeguard NOW Impact Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+</head>
+<body>
+<style>
+/* Layout: a numbered questionnaire on the left that the company fills in step by step, an answer sheet on the right that opens with the three answers and a value-against-cost bar. Colours follow the Group 17 pitch template. */
+:root{
+  --bg:#F3F3F9; --paper:#FFFFFF; --ink:#1D1D45; --muted:#5C5C78; --line:#DADAEA; --soft:#EDEDF7;
+  --blue:#4646C0; --blue-soft:#E7E7FA; --loss:#C0304A; --loss-soft:#FBE5EA; --gain:#1C7A57; --gain-soft:#E1F2EA; --warn:#4646C0; --warn-soft:#E7E7FA;
+  --on-blue:#FFFFFF; --gold:#FDBC28; --on-gold:#30306E; --head:#30306E; --hdr1:#6666EE; --hdr2:#3B3B73;
+  --font:"Helvetica Neue", Helvetica, Arial, sans-serif;
+  --display:"Trebuchet MS", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12122B; --paper:#1B1B3B; --ink:#E9E9F7; --muted:#A3A3C2; --line:#30305A; --soft:#232349;
+  --blue:#A0A0FF; --blue-soft:#28285C; --loss:#FF8C9E; --loss-soft:#3D1A24; --gain:#62C79C; --gain-soft:#173327; --warn:#A0A0FF; --warn-soft:#28285C; --on-blue:#12122B; --head:#D4D4FF; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12122B; --paper:#1B1B3B; --ink:#E9E9F7; --muted:#A3A3C2; --line:#30305A; --soft:#232349;
+  --blue:#A0A0FF; --blue-soft:#28285C; --loss:#FF8C9E; --loss-soft:#3D1A24; --gain:#62C79C; --gain-soft:#173327; --warn:#A0A0FF; --warn-soft:#28285C; --on-blue:#12122B; --head:#D4D4FF; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:0 48px}
+.wrap{max-width:1180px;margin:0 auto}
+h1,h2,h3{margin:0;text-wrap:balance;letter-spacing:-.01em}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 24px;padding-block:22px 18px;border-bottom:1px solid var(--line);margin-bottom:24px}
+.brand h1{font-size:22px;font-weight:800}
+.brand p{margin:2px 0 0;color:var(--muted);font-size:14px}
+.ctl{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--paper)}
+.seg button{border:0;background:none;padding:7px 12px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--blue);color:var(--on-blue)}
+
+/* header band, as on the slides */
+.top{background:linear-gradient(120deg,var(--hdr1),var(--hdr2));color:#fff;border:0;border-radius:0 0 18px 18px;padding:22px 26px 24px;margin-bottom:22px}
+.brand .eyebrow{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.8);margin-bottom:6px}
+.brand .eyebrow::before{content:"";width:18px;height:3px;border-radius:2px;background:var(--gold)}
+.brand h1{font-family:var(--display);font-size:26px;font-weight:700;color:#fff}
+.brand p{color:rgba(255,255,255,.85);font-size:14.5px;max-width:58ch}
+.top .ctl{color:rgba(255,255,255,.85)}
+.top .seg{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.35)}
+.top .seg button{color:#fff}
+.top .seg button+button{border-left-color:rgba(255,255,255,.35)}
+.top .seg button[aria-pressed="true"]{background:var(--gold);color:var(--on-gold)}
+.top .sclabel{color:#fff}
+.top .ctl{flex-wrap:wrap}
+@media (max-width:520px){.top{padding:18px 18px 20px}.brand h1{font-size:22px}.top .seg button{padding:7px 8px;font-size:12px}}
+/* quick start */
+.quick{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 14px;background:var(--blue-soft);border-radius:14px;padding:14px 16px;font-size:13.5px}
+.quick p{margin:0;min-width:0;flex:1 1 200px}
+.quick .btns{margin:0}
+/* numbered steps */
+form{counter-reset:step}
+form>fieldset,form>details.small{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:18px}
+form>fieldset legend{float:left;width:100%;counter-increment:step;display:flex;align-items:center;gap:10px;font-family:var(--display);font-size:17px;color:var(--head);margin:0 0 2px}
+form>fieldset legend::before{content:counter(step);display:inline-grid;place-items:center;flex:none;width:26px;height:26px;border-radius:50%;background:var(--gold);color:var(--on-gold);font-family:var(--font);font-size:13px;font-weight:800}
+legend .tag2{margin-left:auto;font-family:var(--font);font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);background:var(--soft);border-radius:999px;padding:3px 9px;white-space:nowrap}
+legend .tag2.req{background:var(--blue-soft);color:var(--blue)}
+form>details.small summary{font-family:var(--display);font-size:15.5px;color:var(--head);list-style:none;display:flex;align-items:center;gap:10px}
+form>details.small summary::-webkit-details-marker{display:none}
+form>details.small summary::after{content:"+";margin-left:auto;font-family:var(--font);font-weight:700;font-size:18px;color:var(--muted)}
+form>details.small[open] summary::after{content:"−"}
+/* answers */
+.answers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-bottom:1px solid var(--line)}
+@media (max-width:1120px){.answers{grid-template-columns:minmax(0,1fr)}}
+.answers .q{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:6px;border-bottom:0;border-right:1px solid var(--line);padding:22px 18px 18px}
+.answers .q:last-child{border-right:0}
+@media (max-width:1120px){.answers .q{border-right:0;border-bottom:1px solid var(--line)}.answers .q:last-child{border-bottom:0}}
+.answers .q::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:var(--stripe)}
+.answers .q.risk{--stripe:var(--loss)} .answers .q.rec{--stripe:var(--gain)} .answers .q.roi{--stripe:var(--gold)}
+.answers .kick{font-size:11.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--stripe)}
+.answers .q.roi .kick{color:var(--head)}
+.answers .ask{font-size:13px}
+.answers .big{font-size:clamp(22px,2.05vw,28px)}
+.answers .q .side{text-align:left}
+.answers .per{font-size:15px;font-weight:600;letter-spacing:0;color:var(--muted)}
+/* value against cost */
+.vrow{display:grid;grid-template-columns:62px minmax(0,1fr);gap:10px;align-items:center;font-size:13px}
+.vrow+.vrow{margin-top:8px}
+.vrow>b{font-weight:700}
+.vtrack{display:flex;height:30px;border-radius:7px;overflow:hidden;background:var(--soft)}
+.vtrack i{display:flex;align-items:center;padding-inline:8px;min-width:0;overflow:hidden;white-space:nowrap;font-style:normal;font-size:12px;font-weight:700;color:var(--bg)}
+.vtrack i.g1{background:var(--gain)} .vtrack i.g2{background:color-mix(in srgb,var(--gain) 62%,var(--paper))} .vtrack i.g3{background:repeating-linear-gradient(45deg,color-mix(in srgb,var(--gain) 40%,var(--paper)) 0 6px,color-mix(in srgb,var(--gain) 25%,var(--paper)) 6px 12px);color:var(--ink)}
+.vtrack i.c1{background:var(--loss)} .vtrack i.c2{background:color-mix(in srgb,var(--loss) 60%,var(--paper))}
+.vkey{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;font-size:12.5px;color:var(--muted)}
+.vkey span{display:inline-flex;align-items:center;gap:6px}
+.vkey span::before{content:"";width:10px;height:10px;border-radius:3px;background:var(--k)}
+.vsay{margin:10px 0 0;font-size:14px}
+/* jump links */
+.jump{display:flex;flex-wrap:wrap;gap:6px;padding:12px 22px;border-bottom:1px solid var(--line);background:var(--soft)}
+.jump a{font-size:12.5px;font-weight:600;color:var(--ink);text-decoration:none;background:var(--paper);border:1px solid var(--line);border-radius:999px;padding:4px 11px}
+.jump a:hover{border-color:var(--blue);color:var(--blue)}
+.sec h3,details.ev summary{font-family:var(--display);color:var(--head)}
+.sec h3{display:flex;align-items:center;gap:8px;font-size:16px}
+.sec h3::before{content:"";flex:none;width:4px;height:16px;border-radius:2px;background:var(--gold)}
+[id^="s-"]{scroll-margin-top:16px}
+.empty .btn{margin-top:14px}
+.grid{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:28px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+
+form{display:flex;flex-direction:column;gap:24px}
+fieldset{border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+legend{font-weight:700;font-size:16px;padding:0;margin-bottom:2px}
+.help{color:var(--muted);font-size:13px;margin:-4px 0 0}
+.row{display:grid;grid-template-columns:minmax(0,1fr) 150px;gap:12px;align-items:center}
+.row label{font-size:14px;font-weight:500}
+.row.wide{grid-template-columns:minmax(0,1fr) 210px}
+.row label small{display:block;color:var(--muted);font-weight:400;font-size:12.5px}
+.field{position:relative}
+.field input{width:100%;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px 30px 8px 10px;text-align:right}
+.field input.text{text-align:left;padding-right:10px}
+.field input:focus{border-color:var(--blue)}
+.field input::placeholder{color:var(--muted);opacity:.6}
+.field select{width:100%;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.roles{width:100%;border-collapse:collapse;font-size:13px}
+.roles th,.roles td{padding:5px 4px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.roles th:first-child,.roles td:first-child{text-align:left;white-space:normal}
+.roles input{width:100%;min-width:56px;background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:5px 6px;text-align:right}
+.roles input::placeholder{color:var(--muted);opacity:.7}
+.jtabs{display:flex;flex-wrap:wrap;gap:4px;border-bottom:1px solid var(--line)}
+.jtabs button{border:1px solid var(--line);border-bottom:0;background:var(--soft);border-radius:8px 8px 0 0;padding:6px 10px;font-size:12.5px;font-weight:600;color:var(--muted);cursor:pointer;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:-1px}
+.jtabs button[aria-selected="true"]{background:var(--paper);color:var(--ink);border-color:var(--line);border-bottom:1px solid var(--paper)}
+.jpanel{display:flex;flex-direction:column;gap:10px;padding:12px 0 2px}
+.jpanel[hidden],.jtabs[hidden],.jtabs button[hidden]{display:none}
+.field select{width:100%}
+.jm{font-size:12.5px;color:var(--muted)}
+.calc.warnTxt{color:var(--loss);font-weight:600}
+.jm b{color:var(--ink)}
+#roleRes{font-size:12.5px}#roleRes th,#roleRes td{padding:8px 4px}
+.dflt{font-size:12.5px;color:var(--warn);background:var(--warn-soft);border-radius:8px;padding:8px 10px;margin:0}
+.field .unit{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none}
+.field.pre input{padding-left:24px;padding-right:10px}
+.field .pre-u{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none}
+.calc{font-size:12.5px;color:var(--muted);margin-top:-4px}
+.slider{display:grid;grid-template-columns:minmax(0,1fr) 54px;gap:12px;align-items:center}
+.slider input{width:100%;accent-color:var(--blue)}
+.slider output{text-align:right;font-weight:700}
+.ticks{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin:-6px 66px 0 2px}
+.presets{display:flex;flex-wrap:wrap;gap:6px}
+.presets button{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:5px 11px;font-size:12.5px;font-weight:600;color:var(--muted);cursor:pointer}
+.presets button:hover{border-color:var(--blue);color:var(--ink)}
+.presets button[aria-pressed="true"]{background:var(--blue);border-color:var(--blue);color:var(--on-blue)}
+details.small{border-top:1px solid var(--line);padding-top:12px}
+details.small summary{cursor:pointer;font-weight:600;font-size:14px}
+details.small textarea{width:100%;min-height:96px;margin-top:8px;border:1px solid var(--line);border-radius:8px;background:var(--paper);padding:8px;font-size:12.5px;line-height:1.45}
+.btns{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--paper);border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:var(--on-blue)}
+.msg{font-size:12.5px;color:var(--muted);margin-top:6px}
+
+.sheet{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);background:var(--paper);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+@media (max-width:900px){.sheet{position:static}}
+.empty{padding:40px 24px;text-align:center;color:var(--muted)}
+.empty h2{color:var(--ink);font-size:18px;margin-bottom:6px}
+.empty p{max-width:44ch;margin:0 auto}
+.q{padding:18px 22px;border-bottom:1px solid var(--line);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 16px;align-items:end}
+.q .ask{font-size:13.5px;color:var(--muted);font-weight:500;grid-column:1/-1}
+.q .big{font-size:34px;font-weight:800;line-height:1.1;letter-spacing:-.02em}
+.q .side{font-size:13px;color:var(--muted);text-align:right}
+.q.risk .big{color:var(--loss)}
+.q.rec .big{color:var(--gain)}
+.verdict{display:inline-block;font-size:13px;font-weight:700;padding:4px 10px;border-radius:999px}
+.v-good{background:var(--gain-soft);color:var(--gain)}
+.v-mid{background:var(--warn-soft);color:var(--warn)}
+.v-bad{background:var(--loss-soft);color:var(--loss)}
+.sec{padding:18px 22px;border-bottom:1px solid var(--line)}
+.sec h3{font-size:15px;font-weight:700;margin-bottom:10px}
+.note{color:var(--muted);font-size:13px;margin:8px 0 0;max-width:68ch}
+
+.funnel{display:flex;flex-direction:column;gap:8px}
+.fr{display:grid;grid-template-columns:180px minmax(0,1fr) 84px;gap:10px;align-items:center;font-size:13.5px}
+@media (max-width:520px){.fr{grid-template-columns:minmax(0,1fr) 76px}.fr .track{grid-column:1/-1;order:3}}
+.track{height:14px;background:var(--soft);border-radius:4px;overflow:hidden}
+.track i{display:block;height:100%;min-width:2px;border-radius:4px}
+.fr b{text-align:right}
+
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left;white-space:normal}
+th{font-size:12.5px;color:var(--muted);font-weight:600}
+tr.tot td{font-weight:700;border-top:2px solid var(--ink);border-bottom:0}
+tr.off td{color:var(--muted)}
+.tw{overflow-x:auto}
+
+.range{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.range div{border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.range div.mid{border-color:var(--blue)}
+.range span{display:block;font-size:12.5px;color:var(--muted)}
+.range strong{font-size:20px}
+.tor{display:flex;flex-direction:column;gap:6px;margin-top:14px}
+.tr{display:grid;grid-template-columns:200px minmax(0,1fr) 92px;gap:10px;align-items:center;font-size:13px}
+@media (max-width:520px){.tr{grid-template-columns:minmax(0,1fr) 84px}.tr .tbar{grid-column:1/-1;order:3}}
+.tbar{position:relative;height:12px;background:var(--soft);border-radius:3px}
+.tbar i{position:absolute;top:0;bottom:0;background:var(--muted);opacity:.55;border-radius:3px}
+.tbar u{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink)}
+.tbar s{position:absolute;top:-3px;bottom:-3px;width:1px;background:var(--loss)}
+
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.tiles+.tiles{margin-top:10px}
+@media (max-width:520px){.tiles{grid-template-columns:minmax(0,1fr)}}
+.tile{border:1px solid var(--line);border-radius:10px;padding:14px 12px;text-align:center;background:var(--paper)}
+.tile b{display:block;font-size:22px;font-weight:800;letter-spacing:-.01em;line-height:1.2}
+.tile span{display:block;font-size:12.5px;color:var(--muted);margin-top:4px}
+.tile em{display:block;font-style:normal;font-size:12px;color:var(--muted);margin-top:2px}
+.tile.g{background:var(--gain-soft);border-color:transparent}
+.tile.g b{color:var(--gain)}
+.tile.off b{color:var(--muted);font-weight:600;font-size:15px}
+details.ev{border-top:1px solid var(--line)}
+details.ev summary{cursor:pointer;padding:14px 22px;font-weight:700;font-size:15px}
+details.ev .in{padding:0 22px 18px}
+.ev td{white-space:normal;text-align:left;vertical-align:top}
+.ev td.n{white-space:nowrap}
+a{color:var(--blue)}
+.foot{color:var(--muted);font-size:12.5px;margin-top:28px;max-width:80ch}
+@media (prefers-reduced-motion:no-preference){.track i{transition:width .3s ease}}
+.chan{display:flex;flex-direction:column;gap:10px}
+.ch{border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.ch.cost{background:var(--soft)}
+.ch.off{opacity:.75}
+.ch-h{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:8px}
+.ch-h b{font-size:14.5px}
+.ch-h strong{font-size:17px;font-weight:800}
+.ch.gain .ch-h strong{color:var(--gain)}
+.ch.cost .ch-h strong{color:var(--loss)}
+.eq{display:flex;flex-wrap:wrap;align-items:stretch;gap:6px;font-size:13px}
+.eq .f{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:6px 9px;min-width:84px}
+.eq .f b{display:block;font-size:14px;font-variant-numeric:tabular-nums}
+.eq .f small{display:block;color:var(--muted);font-size:11.5px;line-height:1.3}
+.eq .op{align-self:center;font-weight:800;color:var(--warn);font-size:15px}
+.eq .f.res{background:var(--gain-soft);border-color:transparent}
+.ch.cost .eq .f.res{background:var(--loss-soft)}
+.formula{margin-top:10px;padding:10px 14px;border-radius:10px;background:var(--blue-soft);font-size:13.5px;font-weight:600}
+.asm{display:flex;flex-direction:column;gap:14px;margin-top:10px}
+.asm .a{display:grid;grid-template-columns:minmax(0,1fr) 64px;gap:2px 10px;align-items:center}
+.asm .a label{font-size:13.5px;font-weight:600}
+.asm .a output{text-align:right;font-weight:700;font-size:13.5px}
+.asm .a input[type=range]{grid-column:1/-1;width:100%;accent-color:var(--blue)}
+.asm .a small{grid-column:1/-1;color:var(--muted);font-size:12px;line-height:1.35}
+.marks{grid-column:1/-1;position:relative;height:14px;font-size:10.5px;color:var(--muted);margin-top:-2px}
+.marks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.chk{display:flex;gap:10px;align-items:flex-start;font-size:13.5px}
+.chk input{margin-top:3px;accent-color:var(--blue)}
+.chk small{display:block;color:var(--muted);font-size:12px}
+.sclabel{font-size:12.5px;color:var(--muted)}
+td.lo{color:var(--loss)} td.hi{color:var(--gain)}
+tr.you td{background:var(--blue-soft)}
+.mech{font-size:12.5px;color:var(--muted);margin:-3px 0 9px;line-height:1.4}
+.ch .tag{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-left:6px}
+.ev td.v{font-weight:600;white-space:nowrap}
+.ev th,#bridge th:last-child{text-align:left}
+.see{font-size:13.5px;line-height:1.5;max-width:72ch}
+.see b{font-variant-numeric:tabular-nums}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="eyebrow">Group 17 · Erasmus University Rotterdam</div>
+      <h1>Lifeguard NOW Impact Calculator</h1>
+      <p>What workforce strain costs your organisation, and what Lifeguard NOW returns after its full cost.</p>
+    </div>
+    <div class="ctl">Outlook
+      <div class="seg" role="group" aria-label="Outlook">
+        <button type="button" data-sc="0">Conservative</button>
+        <button type="button" data-sc="1" aria-pressed="true">Expected</button>
+        <button type="button" data-sc="2">Optimistic</button>
+      </div>
+      <span class="sclabel" id="custom" hidden>Custom values</span>
+    </div>
+  </header>
+
+  <div class="grid">
+    <form id="f" novalidate>
+      <div class="quick">
+        <p><b>Fill in the steps below.</b> Empty fields use Dutch averages. To see how it works first, load the Heijmans example from our pitch.</p>
+        <div class="btns"><button type="button" class="btn primary" id="exHeij">Load Heijmans example</button><button type="button" class="btn" id="clearAll">Clear all</button></div>
+      </div>
+      <fieldset>
+        <legend>Your organisation<span class="tag2 req">Required</span></legend>
+        <div class="row"><label for="name">Company name</label><div class="field"><input id="name" class="text" type="text" autocomplete="organization"></div></div>
+        <div class="row"><label for="n">Employees<small>full-time equivalents</small></label><div class="field"><input id="n" type="number" min="1" step="1" inputmode="numeric"><span class="unit">FTE</span></div></div>
+        <div class="row"><label for="hc">Employees on payroll<small>headcount, Lifeguard charges per employee. Empty = same as FTE</small></label><div class="field"><input id="hc" type="number" min="1" step="1" inputmode="numeric"><span class="unit">ppl</span></div></div>
+        <div class="row wide"><label for="sector">Sector<small>sets the Dutch averages used for anything left empty</small></label><div class="field"><select id="sector"></select></div></div>
+        <div class="row"><label for="pay">Average employment cost per employee<small>salary, social charges and pension per year. Empty = sector average</small></label><div class="field pre"><span class="pre-u">€</span><input id="pay" type="number" min="0" step="any" inputmode="numeric"></div></div>
+        <div class="calc" id="payNote"></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Workforce by type of role<span class="tag2">Optional</span></legend>
+        <p class="help">Roles differ in sick leave, stress, pay and turnover. Enter the share of your FTE in each group. Whatever is left is treated as an average mix. Leave all three empty to skip.</p>
+        <div class="row"><label for="sh_office">Office and knowledge work<small>white collar, e.g. administration, ICT, finance, engineering, management</small></label><div class="field"><input id="sh_office" type="number" step="1" min="0" max="100"><span class="unit">%</span></div></div>
+        <div class="row"><label for="sh_manual">Manual and technical work<small>blue collar, e.g. construction, production, logistics, drivers, cleaning</small></label><div class="field"><input id="sh_manual" type="number" step="1" min="0" max="100"><span class="unit">%</span></div></div>
+        <div class="row"><label for="sh_care">Care, education and service<small>frontline, e.g. nursing, teaching, social work, security, customer service</small></label><div class="field"><input id="sh_care" type="number" step="1" min="0" max="100"><span class="unit">%</span></div></div>
+        <div class="calc" id="roleNote"></div>
+        <details class="small">
+          <summary>Figures per role group, if you have them</summary>
+          <p class="help" style="margin-top:8px">The grey values are estimates. They spread your company averages over the groups using Dutch ratios between occupations (CBS and TNO). Type over them with your own HR figures where you have them.</p>
+          <div class="tw"><table class="roles" id="roleTbl"></table></div>
+        </details>
+      </fieldset>
+
+      <fieldset>
+        <legend>Types of jobs<span class="tag2">Optional</span></legend>
+        <p class="help">An absent day costs more in some jobs than in others, for example when nobody can step in or the work is done in a team. Choose how many job types you have, then pick each job and enter its number of employees. Jobs not in the list count as other jobs, at 1.28. Employees you do not assign also count as other jobs.</p>
+        <div class="row wide"><label for="njobs">Number of job types</label><div class="field"><select id="njobs"></select></div></div>
+        <div class="jtabs" id="jtabs" role="tablist" aria-label="Job types" hidden></div>
+        <div id="jpanels"></div>
+        <div class="tw" id="jobSumWrap" hidden><table class="roles" id="jobSum"></table></div>
+        <div class="calc" id="jobNote"></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Sick leave<span class="tag2">Averages if empty</span></legend>
+        <p class="help">Your occupational health provider can give both figures. Empty fields use the sector or Dutch average.</p>
+        <div class="row"><label for="abs">Sick leave rate<small>share of work days lost</small></label><div class="field"><input id="abs" type="number" step="0.1" min="0" max="40"><span class="unit">%</span></div></div>
+        <div class="row"><label for="psy">Due to stress or psychological complaints<small>share of sick days</small></label><div class="field"><input id="psy" type="number" step="1" min="0" max="100"><span class="unit">%</span></div></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>People leaving<span class="tag2">Averages if empty</span></legend>
+        <p class="help">From HR records and exit interviews. Empty fields use the Dutch average.</p>
+        <div class="row"><label for="turn">Staff turnover<small>leavers per year</small></label><div class="field"><input id="turn" type="number" step="0.5" min="0" max="100"><span class="unit">%</span></div></div>
+        <div class="row"><label for="vol">Left by their own choice<small>share of leavers</small></label><div class="field"><input id="vol" type="number" step="1" min="0" max="100"><span class="unit">%</span></div></div>
+        <div class="row"><label for="str">Named workload, stress or burnout<small>share of those who chose to leave</small></label><div class="field"><input id="str" type="number" step="1" min="0" max="100"><span class="unit">%</span></div></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Lifeguard programme</legend>
+        <p class="help">Share of employees who take one or more coaching sessions during the year.</p>
+        <div class="slider"><input id="coach" type="range" min="0" max="100" step="1" value="10" aria-label="Employees taking coaching"><output id="coachOut" class="num" for="coach">10%</output></div>
+        <div class="ticks num" aria-hidden="true"><span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span></div>
+        <div class="presets" role="group" aria-label="Quick values"><button type="button" data-v="5">5%</button><button type="button" data-v="10">10%</button><button type="button" data-v="15">15%</button><button type="button" data-v="25">25%</button><button type="button" data-v="50">50%</button><button type="button" data-v="100">100%</button></div>
+        <div class="row"><label for="hrs">Coaching hours per user<small>taken during work time, Lifeguard reports 2.6 a year</small></label><div class="field"><input id="hrs" type="number" step="0.1" min="0" max="40" value="2.6"><span class="unit">h</span></div></div>
+        <div class="row"><label for="oh">Other programme hours per employee<small>webinars, onboarding, portal during work time</small></label><div class="field"><input id="oh" type="number" step="0.25" min="0" max="40" value="0"><span class="unit">h</span></div></div>
+        <div class="row"><label for="dr">Discount rate<small>your cost of capital, for the three-year present value</small></label><div class="field"><input id="dr" type="number" step="0.5" min="0" max="20" value="5"><span class="unit">%</span></div></div>
+        <label class="chk"><input id="vat" type="checkbox"><span>We cannot reclaim VAT<small>Common in education, healthcare and the public sector. Adds 21% to the fee.</small></span></label>
+        <label class="chk"><input id="sup" type="checkbox"><span>We already offer similar support<small>For example an employee assistance programme or another coaching service. The studies compare coaching with usual care, so only half of the effect on sick days and leavers is counted as new. Our assumption.</small></span></label>
+      </fieldset>
+
+      <details class="small" open>
+        <summary>Fine-tune the evidence</summary>
+        <p class="help" style="margin-top:8px">Each slider starts at the outlook chosen above. The marks show the conservative, expected and optimistic values, which come from the 95% confidence interval of the study where one exists.</p>
+        <div class="asm" id="asm"></div>
+        <div class="btns"><button type="button" class="btn" id="reset">Reset to the outlook</button></div>
+      </details>
+
+      <details class="small">
+        <summary>Extended return, return to work and productivity</summary>
+        <p class="help" style="margin-top:8px">Two more channels that only work with your own figures. They are reported apart from the main return, because their evidence comes from other kinds of programmes or did not hold up in stricter tests.</p>
+        <div class="row"><label for="rtw">Coaching users on long-term stress-related sick leave<small>per year, people off work for six weeks or more who use coaching to return</small></label><div class="field"><input id="rtw" type="number" step="1" min="0"><span class="unit">people</span></div></div>
+        <div class="asm" id="asmX"></div>
+        <div class="asm"><div class="a"><label for="kpi">Measured productivity gain among coaching users</label><output id="kpiOut" class="num">0%</output><input id="kpi" type="range" min="0" max="10" step="0.5" value="0"><small>Only with a measure you already track, for example cases handled or patient contacts per employee. Tarro et al. 2020 pool SMD 0.33 (95% CI 0.07 to 0.59) from 3 moderate-quality trials, and the effect did not hold once weaker trials were added.</small></div></div>
+      </details>
+
+      <details class="small">
+        <summary>Fill in from an annual report</summary>
+        <p class="help" style="margin-top:8px">Copy this instruction into Claude with the company's annual or sustainability report, then paste the answer below.</p>
+        <textarea id="prompt" readonly>From the attached annual, sustainability or ESG report, return ONLY a JSON object, no other text:
+{"company": string, "employees_fte": number, "headcount": number or null, "sector": string, "employment_costs_eur": number, "sick_leave_pct": number or null, "turnover_pct": number or null, "voluntary_share_pct": number or null, "source_pages": string}
+Use the latest year and convert to euros. Employment costs = wages + social charges + pensions. Use null for anything the report does not state. Never estimate.</textarea>
+        <div class="btns"><button type="button" class="btn" id="copy">Copy instruction</button></div>
+        <textarea id="json" placeholder="Paste the answer here, starting with {"></textarea>
+        <div class="btns"><button type="button" class="btn primary" id="import">Fill in the form</button></div>
+        <div class="msg" id="importMsg" aria-live="polite"></div>
+      </details>
+    </form>
+
+    <section class="sheet" aria-live="polite">
+      <div class="empty" id="empty">
+        <h2>Your results appear here</h2>
+        <p>Enter the number of employees in step 1. Everything else can start from Dutch averages and be replaced with your own figures.</p>
+        <button type="button" class="btn primary" id="exHeij2">Load Heijmans example</button>
+      </div>
+      <div id="results" hidden>
+        <div class="answers">
+        <div class="q risk">
+          <div class="kick">Cost today</div>
+          <div class="ask">How much is workforce strain costing you today?</div>
+          <div class="big num" id="aRisk"></div>
+          <div class="side" id="aRiskSide"></div>
+        </div>
+        <div class="q rec">
+          <div class="kick">Won back</div>
+          <div class="ask">How much can Lifeguard win back each year?</div>
+          <div class="big num" id="aRec"></div>
+          <div class="side" id="aRecSide"></div>
+        </div>
+        <div class="q roi">
+          <div class="kick">Return</div>
+          <div class="ask">Is it worth it, after the fee and the time employees spend in coaching?</div>
+          <div class="big num" id="aRoi"></div><div id="aRoiTxt" style="font-size:13px;color:var(--muted)"></div>
+          <div class="side"><span class="verdict" id="aVerdict"></span></div>
+        </div>
+        </div>
+        <nav class="jump" aria-label="Jump to">
+          <a href="#s-val">Value against cost</a><a href="#s-cost">Where the cost sits</a><a href="#s-chan">How it is calculated</a><a href="#s-believe">Break-even</a><a href="#s-years">Year by year</a><a href="#s-sure">How sure</a>
+        </nav>
+        <div class="sec">
+          <h3 id="s-val">Value against cost, per year</h3>
+          <div id="vbar"></div>
+        </div>
+
+        <div class="sec" id="dfltSec" hidden><p class="dflt" id="dflt"></p></div>
+        <div class="sec" id="roleSec" hidden>
+          <h3>By type of role</h3>
+          <div class="tw"><table id="roleRes"></table></div>
+          <p class="note">Each group gets its own sick leave, stress share, pay, turnover and coaching uptake, so the ceiling on days avoided and the value of each day differ by group. When every group has the same uptake, splitting changes the total little, because the group figures add up to your company averages.</p>
+        </div>
+        <div class="sec" id="jobSec" hidden>
+          <h3>By type of job</h3>
+          <div class="tw"><table id="jobRes"></table></div>
+          <p class="note">Each job type values a sick day at the company's average daily employment cost times its own multiplier. Channel 1 is split over the job types by employees times multiplier. The multipliers come from the 3-day cost-of-absence column of Nicholson et al. 2006, table 4.</p>
+        </div>
+        <div class="sec">
+          <h3 id="s-cost">Where the cost sits, and which channel reaches it</h3>
+          <div class="tw"><table id="bridge"></table></div>
+          <p class="note">Lost output at work is estimated at 2 days per stress-related sick day, half the ratio found by Stewart et al. 2003. It sizes the problem only and never enters the main return, because the trial evidence for it is weak.</p>
+        </div>
+
+        <div class="sec">
+          <h3 id="s-chan">How each channel is calculated</h3>
+          <div class="chan" id="chan"></div>
+          <div class="formula" id="formula"></div>
+        </div>
+
+        <div class="sec">
+          <h3 id="s-believe">What you have to believe for this to pay off</h3>
+          <div class="tw"><table id="believe"></table></div>
+          <p class="note">Each line holds everything else at the current values and asks how low one value can fall before the main return reaches zero. The two "if … gave nothing" lines test whether the case survives on one channel alone.</p>
+        </div>
+
+        <div class="sec">
+          <h3>Value by component</h3>
+          <div class="tiles" id="tilesA"></div>
+          <div class="tiles" id="tilesB"></div>
+          <div class="tiles" id="tilesC"></div>
+        </div>
+
+        <div class="sec">
+          <h3 id="s-years">Year by year</h3>
+          <div class="tw"><table id="years"></table></div>
+        </div>
+
+        <div class="sec">
+          <h3>How it scales with company size</h3>
+          <div class="tw"><table id="scale"></table></div>
+          <p class="note">Same per-employee figures as entered, with Lifeguard's price tier for each size. Break-even is the coaching uptake at which the main return reaches zero in the expected outlook.</p>
+        </div>
+
+        <div class="sec">
+          <h3 id="s-sure">How sure are we?</h3>
+          <div class="range" id="range"></div>
+          <p class="note" id="mcNote"></p>
+          <div class="tor" id="tor"></div>
+          <p class="note">Each bar moves one value from its conservative to its optimistic end. The dark line is the current estimate, the red line is break-even at €1 back for €1 spent.</p>
+        </div>
+
+        <div class="sec">
+          <h3>What you will see in your own figures</h3>
+          <div class="see" id="see"></div>
+        </div>
+
+        <details class="ev">
+          <summary>Why these numbers</summary>
+          <div class="in">
+            <p class="note" style="margin-top:0">Where a study reports a 95% confidence interval, the expected value is its central estimate and the conservative and optimistic values are the two ends of the interval. The standard error behind each interval drives the simulation. Values without a confidence interval are marked.</p>
+            <div class="tw"><table id="evidence"></table></div>
+          </div>
+        </details>
+        <details class="ev">
+          <summary>Value of a sick day by type of job</summary>
+          <div class="in">
+            <p class="note" style="margin-top:0">Nicholson et al. 2006 asked managers what an absence in each job costs, as a multiple of the daily wage. The calculator uses the 3-day cost-of-absence multiplier from their table 4 for each job type you enter. Jobs not in the table, and employees not assigned to a job type, use 1.28. Rows for the jobs you entered are highlighted.</p>
+            <div class="tw"><table id="njTbl"></table></div>
+            <p class="note">In the conservative outlook, the friction cost value of 0.80 for other jobs is scaled by the same ratio, so a job with a multiplier of 1.43 gets 0.80 × 1.43 ÷ 1.28. These are US jobs in the early 2000s, so the ranking between jobs is more reliable than the exact level.</p>
+          </div>
+        </details>
+        <details class="ev">
+          <summary>Channels we considered, and why each is in or out</summary>
+          <div class="in">
+            <p class="note" style="margin-top:0">A channel enters the main return only when a controlled study shows it in euros an employer actually saves, and only once. Everything else is either counted elsewhere already, left to the company's own data, or left out.</p>
+            <div class="tw"><table id="channels"></table></div>
+          </div>
+        </details>
+        <details class="ev">
+          <summary>Limits of this estimate</summary>
+          <div class="in" id="limits"></div>
+        </details>
+        <details class="ev">
+          <summary>References</summary>
+          <div class="in" id="refs"></div>
+        </details>
+      </div>
+    </section>
+  </div>
+
+  <p class="foot">Prototype for Lifeguard NOW by Group 17, Erasmus University Rotterdam. Prices follow Lifeguard's 2026 price list.</p>
+</div>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const L=(t,u)=>`<a href="${u}" target="_blank" rel="noopener">${t}</a>`;
+const fx=(x,d=1)=>Number(x).toLocaleString('en-GB',{minimumFractionDigits:d,maximumFractionDigits:d});
+const pc=x=>Math.round(x*100)+'%';
+function eur(x){const a=Math.abs(x),s=x<0?'−':'';
+ if(a>=1e9)return s+'€'+(a/1e9).toFixed(2)+' bn';
+ if(a>=1e6)return s+'€'+(a/1e6).toFixed(a>=1e8?0:a>=1e7?1:2)+' m';
+ if(a>=1e3)return s+'€'+Math.round(a/1e3).toLocaleString('en-GB')+' k';
+ return s+'€'+Math.round(a).toLocaleString('en-GB');}
+const ef=x=>Math.abs(x)>=1e6?eur(x):(x<0?'−':'')+'€'+Math.round(Math.abs(x)).toLocaleString('en-GB');
+const num=id=>{const v=parseFloat($(id).value);return isFinite(v)?v:null;};
+const dd=x=>x<10?fx(x):Math.round(x).toLocaleString('en-GB');
+
+// Evidence parameters, [conservative, expected, optimistic]. grp 'x' sits under Extended return.
+const EV={
+ days:{l:'Sick days avoided per coaching user a year',v:[0.81,2.65,4.49],min:0,max:6,step:0.01,f:x=>fx(x,2),
+   note:'Tarro et al. 2020, pooled difference in 5 moderate-quality RCTs, 2.65 days (95% CI 0.81 to 4.49). All 11 trials together give 1.56 days.'},
+ m:{l:'Value of a sick day for other jobs, multiple of daily cost',v:[0.8,1.28,1.28],min:.6,max:2,step:.01,f:x=>fx(x,2)+'×',
+   note:'For other jobs. Conservative uses the friction cost method, where colleagues absorb part of the work and a short absence costs 0.8 of pay (Koopmanschap et al. 1995, Brouwer et al. 2023). Expected uses the employer view, a median 1.28 across 35 job types (Nicholson et al. 2006). Each job type you enter is scaled from here by its own multiplier divided by 1.28.'},
+ k:{l:'Stress sick leave of a coaching user, against the average employee',v:[1.0,1.5,2.5],min:1,max:3,step:.1,f:x=>fx(x,1)+'×',
+   note:'Only sets the ceiling on days avoided, so nobody avoids more stress sick days than they would have had. Borritz et al. 2006 found 13.6 sick days a year in the highest burnout quartile against 5.4 in the lowest, a ratio of 2.5.'},
+ rrr:{l:'Fewer stress-driven leavers among coaching users',v:[.36,.49,.59],min:0,max:.8,step:.01,f:pc,
+   note:'Woods Herron et al. 2026, 95 of 823 coached employees left against 187 of 824 matched colleagues, risk ratio 0.51 (95% CI 0.41 to 0.64).'},
+ kT:{l:'Coaching users among stress-driven leavers, against uptake',v:[1.0,1.0,1.5],min:.5,max:3,step:.1,f:x=>fx(x,1)+'×',
+   note:'Our assumption, since no study measures it. Burnout raised actual exits among clinicians (odds ratio 1.57) but not among other staff (Willard-Grace et al. 2019), so the expected value assumes no concentration. At 1.0 a coaching user is as likely to be a stress-driven leaver as anyone else.'},
+ cs:{l:'Share of the turnover gap credited to coaching',v:[.5,.5,.5],min:0,max:1,step:.05,f:pc,
+   note:'Our assumption. The turnover study is matched, not randomised, and matched comparisons can overstate effects (Jones et al. 2019). Mowat et al. 2026 found no difference in intention to leave.'},
+ r:{l:'Cost of replacing a leaver, share of a year\'s cost',v:[.19,.26,.46],min:.05,max:1.5,step:.01,f:pc,
+   note:'Blatter et al. 2012, average hiring cost of 10 to 17 weeks of wages depending on firm size, marginal cost up to 24 weeks. That is 19%, 26% at the midpoint, and 46% of a year.'},
+ g:{l:'First-year ramp-up',v:[.5,.75,.9],min:.3,max:1,step:.05,f:pc,note:'Our assumption. Coaching use builds over the first months.'},
+ rtw:{grp:'x',l:'Days earlier back at work, per return-to-work case',v:[3,15,28],min:0,max:40,step:1,f:x=>fx(x,0)+' d',
+   note:'Nieuwenhuijsen et al. 2020, Cochrane review of psychological treatment for depressed workers, SMD −0.15 (95% CI −0.28 to −0.03, low certainty), which the review translates as 15 days. The 3 and 28 days use the same scale. For burnout-type adjustment disorders, problem-solving therapy brought partial return 17 days earlier, while full return was not significantly faster (Arends et al. 2012). Coaching is not therapy, so treat this as an upper reference.'},
+ mR:{grp:'x',l:'Pay continued during long-term sick leave',v:[.7,1,1],min:.5,max:1.2,step:.05,f:pc,
+   note:'Dutch employers keep paying at least 70% of the wage for up to two years of sickness (Civil Code art. 7:629, Koning and Lindeboom 2015). Many collective agreements pay 100% in the first year.'}
+};
+const KEYS=Object.keys(EV);
+
+// Dutch sector averages. Sick leave: CBS, employer-reported, 2023. Employment cost: CBS national accounts, compensation of employees per labour year, 2024.
+const SECT=[
+ ['All sectors, Dutch average',5.3,76200],['Agriculture, forestry and fishing',3.6,56100],['Mining and quarrying',4.8,131200],['Manufacturing',6.1,84700],
+ ['Energy supply',4.8,106200],['Water supply and waste management',6.3,79600],['Construction',4.8,75800],['Wholesale and retail trade',4.6,65000],
+ ['Transport and storage',6.3,76700],['Hospitality',3.9,44500],['Information and communication',3.9,98100],['Financial services',3.3,119300],
+ ['Real estate',4.2,83000],['Specialised business services',3.6,92600],['Rental and other business services',4.6,56900],['Public administration',6.0,86900],
+ ['Education',5.6,84200],['Health and social care',7.4,70600],['Culture, sports and recreation',4.6,64200],['Other services',5.0,70100]];
+// Dutch averages where no sector figure exists
+const NL={psy:25,T:15.2,V:67,S:40};
+// Role groups. Each value is the simple mean of the listed CBS occupation groups, divided by the all-employee figure.
+// sick leave %: NEA 2023 (CBS 84437NED), all 4.8 · psychological fatigue from work %: NEA 2025 (CBS 84436NED), all 20.7
+// median gross hourly wage €: CBS 2025 (86355NED), all 26.90 · employer switches per quarter %: CBS Q2 2025, all 3.8
+const ROLE={
+ office:{l:'Office and knowledge work',A:4.16,P:21.1,W:31.8,J:2.83},
+ manual:{l:'Manual and technical work',A:5.41,P:18.4,W:21.2,J:4.97},
+ care:{l:'Care, education and service',A:5.73,P:22.6,W:23.65,J:3.97},
+ mix:{l:'Average mix, the rest',A:4.8,P:20.7,W:26.9,J:3.8}};
+const RK=['office','manual','care','mix'];
+// Nicholson et al. 2006, table 4. [job, 2-week multiplier, 3-day multiplier, observations]. The calculator uses the 3-day multiplier.
+const NJ=[
+ ['Construction engineer',11.40,4.47,8],['Paralegal',1.93,2.13,11],['Medical assistant, physician\'s office',1.85,2.26,6],['Aerospace engineer',1.70,1.70,11],
+ ['Legal secretary',1.68,1.61,26],['Mechanical engineer',1.57,1.54,8],['Motor vehicle salesperson',1.57,1.54,15],['Carpenter, non-residential construction',1.51,1.48,17],
+ ['Restaurant cook',1.48,1.32,5],['Flight attendant',1.43,1.43,6],['Mover, trucking and courier',1.41,1.50,5],['Registered nurse, hospital',1.40,1.40,16],
+ ['Inspector, auto manufacturer',1.39,1.28,12],['Inspector, aircraft manufacturer',1.34,1.29,14],['Welder, auto manufacturer',1.33,1.38,19],['Surgical technician, hospital',1.30,1.30,17],
+ ['General office, retail sales',1.30,1.30,6],['Truck driver, trucking and courier',1.28,1.28,12],['Team assembler, automobile',1.26,1.26,13],['Cashier, retail sales',1.26,1.29,19],
+ ['Registered nurse, hospital operating room',1.25,1.29,31],['Receptionist, physician\'s office',1.24,1.27,7],['Medical records clerk, physician\'s office',1.23,1.23,14],['Registered nurse, physician\'s office',1.21,1.28,7],
+ ['Licensed practical nurse, physician office',1.19,1.24,5],['Desk clerk, hotels and motels',1.19,1.23,9],['Salesperson, retail sales',1.17,1.17,18],['Bartender',1.14,1.24,5],
+ ['Licensed practical nurse, hospital',1.13,1.13,5],['Maids, hotels and motels',1.10,1.14,36],['Construction worker, non-residential',1.09,1.09,9],['Food service manager, restaurant and bar',1.09,1.06,8],
+ ['Fast food server, restaurant and bar',1.05,1.07,9],['Waiter, restaurant and bar',1.02,1.00,10],['Fast food cook, restaurant and bar',1.00,1.00,6]];
+const MJ0=1.28, MAXJ=10; // other jobs
+let jtab=0;
+$('njobs').innerHTML='<option value="0">None, every job counts as other jobs</option>'+Array.from({length:MAXJ},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('');
+{const opts='<option value="">Choose a job</option>'+NJ.map((j,i)=>[j[0],i]).sort((a,b)=>a[0].localeCompare(b[0])).map(([n,i])=>`<option value="${i}">${n} (${NJ[i][2].toFixed(2)})</option>`).join('')+`<option value="o">Other jobs, not in the list (${MJ0.toFixed(2)})</option>`;
+ $('jpanels').innerHTML=Array.from({length:MAXJ},(_,i)=>`<div class="jpanel" id="jp_${i}" role="tabpanel" aria-labelledby="jt_${i}" hidden>
+  <div class="row wide"><label for="job_${i}">Job ${i+1}</label><div class="field"><select id="job_${i}">${opts}</select></div></div>
+  <div class="row"><label for="jobq_${i}">Employees in this job<small>full-time equivalents</small></label><div class="field"><input id="jobq_${i}" type="number" min="0" step="1" inputmode="numeric"><span class="unit">FTE</span></div></div>
+  <div class="jm" id="jm_${i}"></div></div>`).join('');
+ $('jtabs').innerHTML=Array.from({length:MAXJ},(_,i)=>`<button type="button" role="tab" id="jt_${i}" aria-controls="jp_${i}" data-j="${i}" hidden>Job ${i+1}</button>`).join('');}
+const jobOf=i=>{const v=$('job_'+i).value;if(v==='')return null;return v==='o'?{n:'Other jobs',m:MJ0,o:true}:{n:NJ[+v][0],m:NJ[+v][2],idx:+v};};
+Object.values(ROLE).forEach(r=>{r.rA=r.A/4.8;r.rP=r.P/20.7;r.rC=r.W/26.9;r.rT=r.J/3.8;});
+$('sector').innerHTML=SECT.map((x,i)=>`<option value="${i}">${x[0]}</option>`).join('');
+let sc=1, cur={}, custom=false;
+const vals=s=>Object.fromEntries(KEYS.map(k=>[k,EV[k].v[s]]));
+
+// sliders
+const slider=k=>{const e=EV[k],pos=x=>((x-e.min)/(e.max-e.min)*100).toFixed(1);
+ const mk=[...new Set(e.v)].map(x=>`<span style="left:${pos(x)}%">${e.f(x)}</span>`).join('');
+ return `<div class="a"><label for="p_${k}">${e.l}</label><output id="o_${k}" class="num"></output><input id="p_${k}" type="range" min="${e.min}" max="${e.max}" step="${e.step}"><div class="marks" aria-hidden="true">${mk}</div><small>${e.note}</small></div>`;};
+$('asm').innerHTML=KEYS.filter(k=>!EV[k].grp).map(slider).join('');
+$('asmX').innerHTML=KEYS.filter(k=>EV[k].grp).map(slider).join('');
+$('roleTbl').innerHTML='<tr><th>Group</th><th>Sick leave %</th><th>Stress share %</th><th>Cost per FTE €</th><th>Uptake %</th></tr>'+
+ ['office','manual','care'].map(k=>`<tr><td>${ROLE[k].l}</td>`+['abs','psy','pay','up'].map(f=>`<td><input id="r_${k}_${f}" type="number" step="any" min="0"></td>`).join('')+'</tr>').join('');
+function setScenario(s){sc=s;cur=vals(s);custom=false;KEYS.forEach(k=>{$('p_'+k).value=cur[k];});
+ document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.sc===s?'true':'false'));}
+
+function price(n){const r=n<=25?100:n<=50?90:n<=75?85:n<=100?80:n<=500?75:n<=1000?65:50;return{rate:r,annual:n*r};}
+
+function inputs(){
+ const sec=SECT[+$('sector').value||0], used=[];
+ const pick=(id,def,lab)=>{const x=num(id);if(x!=null)return x;used.push(lab);return def;};
+ // job types
+ const nJ=+$('njobs').value, jobs=[];
+ for(let i=0;i<nJ;i++){const j=jobOf(i), q=num('jobq_'+i);if(j&&q>0)jobs.push({...j,q,i});}
+ const listed=jobs.reduce((a,j)=>a+j.q,0);
+ const N=num('n')||(listed>0?listed:null), nFromJobs=num('n')==null&&listed>0;
+ let JM=MJ0, otherQ=0, over=false;
+ if(jobs.length&&N){const base=Math.max(N,listed); over=listed>N; otherQ=Math.max(0,N-listed);
+  jobs.forEach(j=>{j.w=j.q/base;}); JM=jobs.reduce((a,j)=>a+j.w*j.m,0)+(otherQ/base)*MJ0;}
+ const C=pick('pay',sec[2],`employment cost ${ef(sec[2])} (${sec[0].toLowerCase()})`);
+ const A=pick('abs',sec[1],`sick leave ${fx(sec[1],1)}% (${sec[0].toLowerCase()})`);
+ const psy=pick('psy',NL.psy,`stress share ${NL.psy}% (Dutch average)`);
+ const T=pick('turn',NL.T,`turnover ${fx(NL.T,1)}% (Dutch average)`);
+ const V=pick('vol',NL.V,`left by own choice ${NL.V}% (Dutch average)`);
+ const S=pick('str',NL.S,`stress-driven leavers ${NL.S}% (our assumption)`);
+ const c=+$('coach').value/100, users0=(N||0)*c, rtwN=num('rtw')||0;
+ const H=num('hc')||N;
+ // role groups, normalised so that the groups add up to the company averages
+ const sh={office:num('sh_office')||0,manual:num('sh_manual')||0,care:num('sh_care')||0};
+ const tot=sh.office+sh.manual+sh.care, split=tot>0;
+ const p={office:sh.office/Math.max(100,tot),manual:sh.manual/Math.max(100,tot),care:sh.care/Math.max(100,tot)}; p.mix=Math.max(0,1-p.office-p.manual-p.care);
+ let segs;
+ if(!split){segs=[{k:'all',l:'All employees',p:1,A,psy,C,T,c,mj:JM}];}
+ else{const sA=RK.reduce((a,k)=>a+p[k]*ROLE[k].rA,0), sC=RK.reduce((a,k)=>a+p[k]*ROLE[k].rC,0), sT=RK.reduce((a,k)=>a+p[k]*ROLE[k].rT,0);
+  const Ak=k=>A*ROLE[k].rA/sA, sP=RK.reduce((a,k)=>a+p[k]*Ak(k)*ROLE[k].rP,0)/A;
+  segs=RK.filter(k=>p[k]>0).map(k=>{const d={A:Ak(k),psy:psy*ROLE[k].rP/sP,C:C*ROLE[k].rC/sC,c};
+   const o=f=>k==='mix'?null:num(`r_${k}_${f}`);
+   return{k,l:ROLE[k].l,p:p[k],A:o('abs')??d.A,psy:o('psy')??d.psy,C:o('pay')??d.C,T:T*ROLE[k].rT/sT,c:o('up')!=null?o('up')/100:d.c,mj:JM,d};});}
+ const cAvg=segs.reduce((a,g)=>a+g.p*g.c,0);
+ return{N,H,C,A,psy,T,V,S,c:cAvg,c0:c,segs,split,p,tot,used,sec,jobs,nJ,listed,otherQ,over,JM,nFromJobs,sup:$('sup').checked?0.5:1,hrs:num('hrs')||0,oh:num('oh')||0,vat:$('vat').checked?1.21:1,kpi:+$('kpi').value/100,dr:(num('dr')||0)/100,
+  rtwN, q:users0>0?Math.min(rtwN/(N*cAvg||1),1):0, // share of coaching users who are return-to-work cases
+  hasA:true, hasT:true};
+}
+
+function model(I,v,c=I.c,N=I.N){
+ const sc_=I.c>0?c/I.c:0, H=(I.H||N)*N/I.N;
+ let dayW=0,users=0,rc=0,usersA=0,varA=0,varP=0,adA=0,varT=0,adT=0,bA=0,leav=0,kept=0,bT=0,bR=0,bP=0,tUsers=0,tAll=0,pay=0,sdays=0,daysAv=0;
+ const G=I.segs.map(g=>{
+  const Ng=N*g.p, C=g.C, wday=C/257, mg=v.m*g.mj/MJ0, day=wday*mg, hour=C/(257*8), cg=I.c>0?g.c*sc_:c, u=Ng*cg;
+  const r=u*I.q, uA=u-r; // return-to-work cases are counted in channel 3 only
+  const D=Ng*g.A/100*257, Ds=D*g.psy/100; // size of the problem, lost output 2 days at work per stress sick day
+  const cap=g.A/100*257*g.psy/100*v.k, dp=Math.min(v.days,cap)*I.sup, b1=uA*dp*day;
+  const lv=Ng*g.T/100*I.V/100*I.S/100, sh=Math.min(cg*v.kT,.9), kp=lv*sh*v.rrr*v.cs*I.sup, b2=kp*C*v.r;
+  users+=u;rc+=r;usersA+=uA;varA+=D*day;adA+=Ds*day;varP+=Ds*2*day;varT+=Ng*g.T/100*C*v.r;adT+=lv*C*v.r;
+  bA+=b1;leav+=lv;kept+=kp;bT+=b2;bR+=r*v.rtw*wday*v.mR;bP+=u*C*I.kpi;tUsers+=u*I.hrs*hour;tAll+=Ng*I.oh*hour;pay+=Ng*C;sdays+=D;daysAv+=uA*dp;dayW+=Ng*day;
+  return{...g,Ng,cg,u,uA,mg,day,cap,dp,b1,lv,kp,b2,D};});
+ const Cavg=pay/N, wday=Cavg/257, day=dayW/N, hour=Cavg/(257*8);
+ const daysPer=usersA>0?daysAv/usersA:Math.min(v.days,G[0].cap)*I.sup, cap=G.length===1?G[0].cap:daysPer, share=users>0&&leav>0?G.reduce((a,g)=>a+g.lv*Math.min(g.cg*v.kT,.9),0)/leav:Math.min(c*v.kT,.9);
+ const pr=price(Math.round(H)), fee=pr.annual*I.vat, onb=2000*I.vat;
+ const cost=fee+tUsers+tAll, core=bA+bT, ext=core+bR+bP;
+ return{G,Cavg,payroll:pay,sdays,wday,day,hour,users,rc,usersA,cap,daysPer,daysAv,bA,leav,share,kept,bT,bR,bP,pr,H,fee,onb,tUsers,tAll,cost,core,ext,
+  back:core/cost, roi:(core-cost)/cost, backX:ext/cost,
+  total:varA+varT+varP, addr:adA+adT+varP, varA,varT,varP,adA,adT};
+}
+function breakEven(I,v,N=I.N){ // coaching uptake at which the main return reaches zero
+ const f=c=>{const r=model(I,v,c,N);return r.core-r.cost;};
+ if(f(1)<0)return null; if(f(0)>=0)return 0;
+ let a=0,b=1;for(let i=0;i<50;i++){const mid=(a+b)/2;if(f(mid)>=0)b=mid;else a=mid;}return b;
+}
+
+function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function tri(u,a,m,b){if(b===a)return m;const f=(m-a)/(b-a);return u<f?a+Math.sqrt(u*(b-a)*(m-a)):b-Math.sqrt((1-u)*(b-a)*(b-m));}
+
+function render(){
+ const I=inputs();
+ KEYS.forEach(k=>{$('o_'+k).textContent=EV[k].f(cur[k]);});
+ $('custom').hidden=!custom; if(custom)document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed','false'));
+ $('coachOut').textContent=Math.round(I.c0*100)+'%';
+ $('kpiOut').textContent=fx(I.kpi*100,1)+'%';
+ document.querySelectorAll('.presets button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.v===Math.round(I.c0*100)?'true':'false'));
+ $('payNote').textContent=I.C?`That is ${ef(I.C/257)} per work day and ${ef(I.C/2056)} per working hour`+(I.N?`, ${eur(I.N*I.C)} for the whole organisation.`:'.'):'';
+ // placeholders show the averages used for empty fields
+ $('pay').placeholder=Math.round(I.sec[2]).toLocaleString('en-GB'); $('abs').placeholder=fx(I.sec[1],1); $('psy').placeholder=NL.psy; $('turn').placeholder=fx(NL.T,1); $('vol').placeholder=NL.V; $('str').placeholder=NL.S; $('hc').placeholder=I.N?Math.round(I.N):'';
+ $('roleNote').textContent=I.split?(I.tot>100?`The shares add up to ${Math.round(I.tot)}%, so they are scaled to 100%.`:`${Math.round(I.p.mix*100)}% is treated as an average mix.`)+(I.split&&Math.abs(I.c-I.c0)>1e-6?` Overall coaching uptake across the groups is ${fx(I.c*100,1)}%.`:''):'';
+ ['office','manual','care'].forEach(k=>{const g=I.split?I.segs.find(x=>x.k===k):null;
+  [['abs',g?fx(g.d.A,1):fx(I.A*ROLE[k].rA,1)],['psy',g?fx(g.d.psy,0):fx(I.psy*ROLE[k].rP,0)],['pay',g?Math.round(g.d.C).toLocaleString('en-GB'):Math.round(I.C*ROLE[k].rC).toLocaleString('en-GB')],['up',fx(I.c0*100,0)]].forEach(([f,val])=>{$(`r_${k}_${f}`).placeholder=val;});});
+ // job tabs
+ if(jtab>=I.nJ)jtab=Math.max(0,I.nJ-1);
+ $('jtabs').hidden=I.nJ===0;
+ for(let i=0;i<MAXJ;i++){const on=i<I.nJ, j=jobOf(i), q=num('jobq_'+i), b=$('jt_'+i);
+  b.hidden=!on; b.setAttribute('aria-selected',i===jtab?'true':'false'); b.tabIndex=i===jtab?0:-1;
+  b.textContent=j?`${j.n.split(',')[0]}${q?' · '+dd(q):''}`:`Job ${i+1}`; b.title=j?j.n:'';
+  $('jp_'+i).hidden=!(on&&i===jtab);
+  $('jm_'+i).innerHTML=j?`3-day cost-of-absence multiplier <b>${fx(j.m,2)}</b>${j.o?', the value for other jobs':''}. One sick day costs ${fx(j.m,2)} times a day of employment cost.`:'Choose a job to see its multiplier.';}
+ $('jobSumWrap').hidden=!I.jobs.length;
+ if(I.jobs.length){const base=Math.max(I.N||0,I.listed);
+  $('jobSum').innerHTML='<tr><th>Job</th><th>FTE</th><th>Multiplier</th></tr>'+I.jobs.map(j=>`<tr><td>${j.n}</td><td>${dd(j.q)}</td><td>${fx(j.m,2)}</td></tr>`).join('')+
+   (I.otherQ>0?`<tr><td>Other jobs, not assigned</td><td>${dd(I.otherQ)}</td><td>${fx(MJ0,2)}</td></tr>`:'')+
+   `<tr class="tot"><td>Weighted multiplier</td><td>${dd(base)}</td><td>${fx(I.JM,2)}</td></tr>`;}
+ $('jobNote').textContent=!I.nJ?'Every employee uses 1.28, the multiplier for other jobs.':!I.jobs.length?'Choose a job and enter its employees in each tab.':
+  I.nFromJobs?`Employees taken from your job types, ${dd(I.listed)} FTE in total.`:I.over?`Your job types add up to ${dd(I.listed)} FTE, more than the ${dd(I.N)} FTE above, so they are used as shares.`:I.otherQ>0?`Your job types cover ${dd(I.listed)} of ${dd(I.N)} FTE. The other ${dd(I.otherQ)} FTE are counted as other jobs at 1.28. If some of them are in the job list, add them as a job type.`:'';
+ $('jobNote').classList.toggle('warnTxt',I.jobs.length>0&&!I.nFromJobs&&(I.over||I.otherQ>0));
+ const ready=I.N>0&&I.C>0;
+ $('empty').hidden=ready; $('results').hidden=!ready;
+ if(!ready)return;
+ const v=cur, m=model(I,v), payroll=m.payroll;
+ $('dfltSec').hidden=!I.used.length;
+ $('dflt').innerHTML=I.used.length?`<b>Filled with averages:</b> ${I.used.join(', ')}. Replace them with your own figures for a firm-specific result.`:'';
+ $('roleSec').hidden=!I.split;
+ $('jobSec').hidden=!I.jobs.length;
+ if(I.jobs.length){const base=Math.max(I.N,I.listed), rows=I.jobs.map(j=>({n:j.n,q:j.q*I.N/base,m:j.m}));
+  if(I.otherQ>0)rows.push({n:'Other jobs, not assigned',q:I.otherQ,m:MJ0});
+  const wsum=rows.reduce((a,r)=>a+r.q*r.m,0);
+  $('jobRes').innerHTML='<tr><th>Job</th><th>FTE</th><th>3-day multiplier</th><th>In this outlook</th><th>Value of a sick day</th><th>Channel 1</th></tr>'+
+   rows.map(r=>`<tr><td>${r.n}</td><td class="num">${dd(r.q)}</td><td class="num">${fx(r.m,2)}</td><td class="num">${fx(v.m*r.m/MJ0,2)}</td><td class="num">${ef(m.wday*v.m*r.m/MJ0)}</td><td class="num">${ef(m.bA*r.q*r.m/wsum)}</td></tr>`).join('')+
+   `<tr class="tot"><td>Total</td><td class="num">${dd(I.N)}</td><td class="num">${fx(I.JM,2)}</td><td class="num">${fx(v.m*I.JM/MJ0,2)}</td><td class="num">${ef(m.wday*v.m*I.JM/MJ0)}</td><td class="num">${ef(m.bA)}</td></tr>`;}
+ {const sel=new Set(I.jobs.filter(j=>!j.o).map(j=>j.idx));
+  $('njTbl').innerHTML='<tr><th>Job (Nicholson et al. 2006, table 4)</th><th>3-day multiplier, used</th><th>2-week multiplier</th><th>Answers</th></tr>'+
+   NJ.map((j,i)=>`<tr${sel.has(i)?' class="you"':''}><td>${j[0]}</td><td class="num"><b>${fx(j[2],2)}</b></td><td class="num">${fx(j[1],2)}</td><td class="num">${j[3]}</td></tr>`).join('')+
+   `<tr class="tot"><td>Other jobs</td><td class="num">${fx(MJ0,2)}</td><td class="num"></td><td class="num"></td></tr>`;}
+ if(I.split){const tr=(a)=>`<tr>${a.map((x,i)=>i?`<td class="num">${x}</td>`:`<td>${x}</td>`).join('')}</tr>`;
+  $('roleRes').innerHTML='<tr><th>Group</th><th>FTE</th><th>Sick leave</th><th>Stress share</th><th>Cost per FTE</th><th>Coaching users</th><th>Channel 1</th><th>Channel 2</th></tr>'+
+   m.G.map(g=>tr([({office:'Office',manual:'Manual',care:'Care, service',mix:'Rest, mix'})[g.k]||g.l,dd(g.Ng),fx(g.A,1)+'%',fx(g.psy,0)+'%',ef(g.C),dd(g.u),ef(g.b1),ef(g.b2)])).join('')+
+   `<tr class="tot"><td>Total</td><td class="num">${dd(I.N)}</td><td class="num">${fx(m.sdays/(I.N*257)*100,1)}%</td><td class="num"></td><td class="num">${ef(m.Cavg)}</td><td class="num">${dd(m.users)}</td><td class="num">${ef(m.bA)}</td><td class="num">${ef(m.bT)}</td></tr>`;}
+
+ $('aRisk').innerHTML=eur(m.total)+'<span class="per"> a year</span>';
+ $('aRiskSide').innerHTML=`${pc(m.total/payroll)} of payroll<br>${eur(m.addr)} linked to stress`;
+ $('aRec').innerHTML=eur(m.core)+'<span class="per"> a year</span>';
+ const bits=[]; if(I.hasA)bits.push(`${dd(m.usersA*m.daysPer)} sick days`); if(I.hasT)bits.push(`${fx(m.kept)} leavers kept`); if(m.bR+m.bP>0)bits.push(`plus ${eur(m.bR+m.bP)} extended`);
+ $('aRecSide').innerHTML=bits.join('<br>');
+ $('aRoi').textContent=`€${fx(m.back,2)} back for every €1`;
+ const payM=m.core>0?(m.cost+m.onb)/(m.core*v.g/12):Infinity;
+ $('aRoiTxt').textContent=`Main return ${m.roi>=0?'+':''}${Math.round(m.roi*100)}%. Full cost ${eur(m.cost)} a year, of which ${eur(m.tUsers+m.tAll)} is employee time. `+(payM<=12?`Pays for itself in about ${Math.max(1,Math.round(payM))} month${Math.round(payM)>1?'s':''}.`:'Does not pay for itself within the first year.');
+ const vd=$('aVerdict');
+ if(m.back>=1.5){vd.textContent='Worth it';vd.className='verdict v-good';}
+ else if(m.back>=1){vd.textContent='Borderline';vd.className='verdict v-mid';}
+ else{vd.textContent='Not worth it';vd.className='verdict v-bad';}
+
+ // where the cost sits
+ const st=(x,y)=>`<td class="num">${x}</td><td class="num">${y}</td>`, wn='style="white-space:normal;text-align:left"';
+ $('bridge').innerHTML='<tr><th>Cost pool</th><th>All causes</th><th>Linked to stress</th><th>Reached by</th></tr>'+
+  (I.hasA?`<tr><td>Sick leave</td>${st(eur(m.varA),eur(m.adA))}<td ${wn}>Channel 1, fewer sick days (main). Channel 3, faster return to work (extended)</td></tr>`:`<tr><td>Sick leave</td><td colspan="3" ${wn}>Add both sick leave figures</td></tr>`)+
+  (I.hasT?`<tr><td>People leaving</td>${st(eur(m.varT),eur(m.adT))}<td ${wn}>Channel 2, fewer stress-driven leavers (main)</td></tr>`:`<tr><td>People leaving</td><td colspan="3" ${wn}>Add all three turnover figures</td></tr>`)+
+  (I.hasA?`<tr><td>Lost output at work</td>${st(eur(m.varP),eur(m.varP))}<td ${wn}>Channel 4, productivity (extended, your own measure only)</td></tr>`:'')+
+  `<tr class="tot"><td>Total</td>${st(eur(m.total),eur(m.addr))}<td ${wn}>The main return recovers ${fx(m.core/m.addr*100,1)}% of the stress-linked cost</td></tr>`;
+
+ // channels
+ const F=(val,lab)=>`<div class="f"><b>${val}</b><small>${lab}</small></div>`, X='<span class="op">×</span>', EQ='<span class="op">=</span>', PL='<span class="op">+</span>';
+ const RES=x=>`<div class="f res"><b>${ef(x)}</b><small>a year</small></div>`;
+ const ch=(cls,title,tag,total,mech,body)=>`<div class="ch ${cls}"><div class="ch-h"><b>${title}<span class="tag">${tag}</span></b><strong class="num">${total}</strong></div>${mech?`<p class="mech">${mech}</p>`:''}<div class="eq">${body}</div></div>`;
+ let html='';
+ html+=I.hasA?ch('gain','1. Fewer sick days','main',ef(m.bA),'Coaching lowers strain before it turns into stress-related sick leave. Each avoided sick day is valued at what an absent day costs the employer.',
+   I.split?m.G.map(g=>`<div class="eq" style="margin-bottom:6px">${F(dd(g.uA),g.l.toLowerCase())+X+F(fx(g.dp,2)+' days',g.dp<v.days*I.sup?'avoided each, capped':'avoided each')+X+F(ef(g.day),`per sick day, daily cost × ${fx(g.mg,2)}`)+EQ+RES(g.b1)}</div>`).join('')
+   :F(dd(m.usersA),m.rc>0?'coaching users at work, return-to-work cases sit in channel 3':'coaching users')+X+F(fx(m.daysPer,2)+' days',m.daysPer<v.days*I.sup?(I.sup<1?'avoided each, half counted as new':'avoided each, capped at their own stress sick days'):'avoided each (Tarro et al. 2020)')+X+F(ef(m.day),`per sick day, daily cost × ${fx(m.G[0].mg,2)}`+(I.jobs.length?', weighted over your jobs':''))+EQ+RES(m.bA))
+  :ch('off','1. Fewer sick days','main','not included','','<div class="f"><b>Add both sick leave figures</b></div>');
+ html+=I.hasT?ch('gain','2. Fewer stress-driven leavers','main',ef(m.bT),'Some coaching users who would have quit over workload or burnout stay. Each stay saves one round of hiring and training a replacement.',
+   I.split?m.G.map(g=>`<div class="eq" style="margin-bottom:6px">${F(fx(g.lv,0),g.l.toLowerCase()+', stress-driven leavers')+X+F(pc(Math.min(g.cg*v.kT,.9)),'coaching users')+X+F(pc(v.rrr*v.cs*I.sup),'fewer leave, credited')+EQ+F(fx(g.kp,1),'kept')+X+F(ef(g.C*v.r),'hiring cost')+EQ+RES(g.b2)}</div>`).join('')
+   :F(fx(m.leav,0),'stress-driven voluntary leavers a year')+X+F(pc(m.share),`of them coaching users, uptake × ${fx(v.kT,1)}`)+X+F(pc(v.rrr),'fewer leave (Woods Herron et al. 2026)')+X+F(pc(v.cs*I.sup),I.sup<1?'credited, halved for existing support':'of that gap credited to coaching')+EQ+F(fx(m.kept),'leavers kept')+X+F(ef(I.C*v.r),`hiring cost, ${pc(v.r)} of a year (Blatter et al. 2012)`)+EQ+RES(m.bT))
+  :ch('off','2. Fewer stress-driven leavers','main','not included','','<div class="f"><b>Add all three turnover figures</b></div>');
+ html+=m.rc>0?ch('gain','3. Faster return to work','extended',ef(m.bR),'People already off work with stress complaints come back sooner, so the employer stops paying wages for work nobody is doing.',
+   F(fx(m.rc,m.rc<10?1:0),'coaching users on long-term leave')+X+F(fx(v.rtw,0)+' days','earlier back each (Cochrane 2020)')+X+F(ef(m.wday),'daily employment cost')+X+F(pc(v.mR),'of pay continued while sick')+EQ+RES(m.bR))
+  :ch('off','3. Faster return to work','extended','off','','<div class="f"><b>Not counted</b><small>Enter coaching users on long-term sick leave under Extended return</small></div>');
+ html+=I.kpi>0?ch('gain','4. Productivity at work','extended',ef(m.bP),'Coaching users get more done on the days they are at work. Only a measure the company already tracks can show this.',
+   F(dd(m.users),'coaching users')+X+F(ef(m.Cavg),'employment cost each')+X+F(fx(I.kpi*100,1)+'%','measured gain')+EQ+RES(m.bP))
+  :ch('off','4. Productivity at work','extended','off','','<div class="f"><b>Not counted</b><small>Enter a measured gain under Extended return</small></div>');
+ html+=`<div class="ch cost"><div class="ch-h"><b>Cost, fee and employee time</b><strong class="num">${ef(m.cost)}</strong></div><p class="mech">Lifeguard charges per employee, whether or not they use it. Time in coaching is taken from work, so it is valued at the hourly employment cost.</p>`+
+  `<div class="eq">${F(Math.round(m.H).toLocaleString('en-GB'),m.H!==I.N?'employees on payroll':'employees, FTE')+X+F('€'+m.pr.rate,'per employee, price tier')+(I.vat>1?X+F('1.21','VAT not reclaimable'):'')+EQ+F(ef(m.fee),'Lifeguard fee')}</div>`+
+  `<div class="eq" style="margin-top:6px">${F(dd(m.users),'coaching users')+X+F(fx(I.hrs,1)+' h','in coaching, during work time')+X+F(ef(m.tUsers/Math.max(m.users*I.hrs,1e-9)),I.split?'per hour, weighted by group':'per working hour')+EQ+F(ef(m.tUsers),'time cost')}</div>`+
+  (m.tAll>0?`<div class="eq" style="margin-top:6px">${F(I.N.toLocaleString('en-GB'),'employees')+X+F(fx(I.oh,2)+' h','other programme time')+X+F(ef(m.hour),'per working hour')+EQ+F(ef(m.tAll),'time cost')}</div>`:'')+
+  `<div class="eq" style="margin-top:6px">${F(ef(m.fee),'fee')+PL+F(ef(m.tUsers+m.tAll),'employee time')+EQ}<div class="f res"><b>${ef(m.cost)}</b><small>a year, plus ${ef(m.onb)} onboarding in year 1</small></div></div></div>`;
+ $('chan').innerHTML=html;
+ const hasX=m.bR+m.bP>0;
+ {const ext=m.bR+m.bP, top=Math.max(m.core+ext,m.cost)||1, w=x=>(x/top*100).toFixed(2)+'%', lab=x=>x/top>.14?eur(x):'';
+  const seg=(cls,x,t)=>x>0?`<i class="${cls}" style="width:${w(x)}" title="${t} ${eur(x)}">${lab(x)}</i>`:'';
+  $('vbar').innerHTML=`<div class="vrow"><b>Value</b><div class="vtrack">${seg('g1',m.bA,'Channel 1, fewer sick days')}${seg('g2',m.bT,'Channel 2, fewer leavers')}${seg('g3',ext,'Extended, channels 3 and 4')}</div></div>`+
+   `<div class="vrow"><b>Cost</b><div class="vtrack">${seg('c1',m.fee,'Lifeguard fee')}${seg('c2',m.tUsers+m.tAll,'Employee time')}</div></div>`+
+   `<div class="vkey"><span style="--k:var(--gain)">Fewer sick days ${eur(m.bA)}</span><span style="--k:color-mix(in srgb,var(--gain) 62%,var(--paper))">Fewer leavers ${eur(m.bT)}</span>${ext>0?`<span style="--k:color-mix(in srgb,var(--gain) 35%,var(--paper))">Extended ${eur(ext)}</span>`:''}<span style="--k:var(--loss)">Fee ${eur(m.fee)}</span><span style="--k:color-mix(in srgb,var(--loss) 60%,var(--paper))">Employee time ${eur(m.tUsers+m.tAll)}</span></div>`+
+   `<p class="vsay">${m.core>=m.cost?`The main value is <b>${fx(m.back,2)} times</b> the full cost, so every €1 spent brings back €${fx(m.back,2)}.`:`The main value covers only <b>${Math.round(m.back*100)}%</b> of the full cost.`}${ext>0?` With the extended channels it is ${fx(m.backX,2)} times.`:''}</p>`;}
+ $('formula').innerHTML=`Main return = (Channel 1 ${ef(m.bA)} + Channel 2 ${ef(m.bT)} − Cost ${ef(m.cost)}) ÷ Cost = <span class="num">${m.roi>=0?'+':''}${Math.round(m.roi*100)}%</span>`+(hasX?`<br>Extended return, adding channels 3 and 4 (${ef(m.bR+m.bP)}) = <span class="num">${m.ext>=m.cost?'+':''}${Math.round((m.ext-m.cost)/m.cost*100)}%</span>`:'');
+
+ // tiles
+ const per=x=>`${ef(x/I.N)} per employee`;
+ const tile=(cls,val,lab,sub)=>`<div class="tile ${cls}"><b class="num">${val}</b><span>${lab}</span>${sub?`<em>${sub}</em>`:''}</div>`;
+ const net=m.core-m.cost, be=breakEven(I,v);
+ $('tilesA').innerHTML=(I.hasA?tile('g',ef(m.bA),'Channel 1, sick days',per(m.bA)):tile('off','Needs sick leave figures','Channel 1, sick days'))+(I.hasT?tile('g',ef(m.bT),'Channel 2, leavers',per(m.bT)):tile('off','Needs turnover figures','Channel 2, leavers'))+(hasX?tile('g',ef(m.bR+m.bP),'Channels 3 and 4, extended',per(m.bR+m.bP)):tile('off','Off','Channels 3 and 4, extended'));
+ $('tilesB').innerHTML=tile('',ef(m.core),'Main value a year',per(m.core))+tile('',ef(m.cost),'Full cost a year',`fee ${ef(m.fee)}, time ${ef(m.tUsers+m.tAll)}`)+tile('',(net<0?'':'+')+ef(net),'Net gain a year',per(net));
+ $('tilesC').innerHTML=(I.hasA?tile('',dd(m.usersA*m.daysPer)+' days','Sick days avoided'):tile('off','Needs sick leave figures','Sick days avoided'))+(I.hasT?tile('',fx(m.kept)+' people','Leavers kept'):tile('off','Needs turnover figures','Leavers kept'))+tile('',be==null?'not reached':fx(be*100,1)+'%','Break-even coaching uptake');
+
+ // what you will see
+ {const parts=[];
+  if(I.hasA){const D=m.sdays, Ae=D/(I.N*257)*100, av=m.daysAv, a2=Ae*(1-av/D);
+   parts.push(`Your sick leave rate would move from <b>${fx(Ae,2)}%</b> to <b>${fx(a2,2)}%</b>, which is ${dd(av)} of ${dd(D)} sick days, or ${fx(av/D*100,1)}% of all sick leave.`);}
+  if(I.hasT){const t2=I.T-m.kept/I.N*100;
+   parts.push(`Turnover would move from <b>${fx(I.T,1)}%</b> to <b>${fx(t2,1)}%</b>, ${fx(m.kept)} of ${dd(I.N*I.T/100)} leavers a year.`);}
+  $('see').innerHTML=`<p style="margin:0 0 8px">${parts.join(' ')}</p><p class="note" style="margin:0">Changes this small disappear in normal year-to-year swings, so the company-wide figure can neither prove nor disprove the effect. A before-and-after comparison of coaching users cannot either, because people seek help at their worst moment and partly recover anyway, which is regression to the mean (Barnett et al. 2005). The fair test is to start in some departments first and compare them with departments that start later (Hemming et al. 2015).</p>`;}
+
+ // years
+ const Y=[[m.core*v.g,m.cost+m.onb],[m.core,m.cost],[m.core,m.cost]];let cb=0,cc=0;
+ $('years').innerHTML='<tr><th>Year</th><th>Value</th><th>Cost</th><th>Net</th><th>Back per €1</th></tr>'+
+  Y.map((y,i)=>{cb+=y[0];cc+=y[1];return`<tr><td>Year ${i+1}${i?'':' <small>(ramp-up, onboarding)</small>'}</td><td class="num">${eur(y[0])}</td><td class="num">${eur(y[1])}</td><td class="num">${eur(y[0]-y[1])}</td><td class="num">€${fx(y[0]/y[1],2)}</td></tr>`;}).join('')+
+  `<tr class="tot"><td>Three years</td><td class="num">${eur(cb)}</td><td class="num">${eur(cc)}</td><td class="num">${eur(cb-cc)}</td><td class="num">€${fx(cb/cc,2)}</td></tr>`+
+  (()=>{let pv=0,pc_=0;Y.forEach((y,i)=>{const f=Math.pow(1+I.dr,-(i+.5));pv+=y[0]*f;pc_+=y[1]*f;});return`<tr><td>Present value at ${fx(I.dr*100,1)}% <small>(mid-year)</small></td><td class="num">${eur(pv)}</td><td class="num">${eur(pc_)}</td><td class="num"><b>${eur(pv-pc_)}</b></td><td class="num">€${fx(pv/pc_,2)}</td></tr>`;})();
+
+ // what you have to believe
+ const solve=(f,lo,hi)=>{let a=lo,b=hi,fa=f(a),fb=f(b);if(fa*fb>0)return null;for(let i=0;i<60;i++){const mid=(a+b)/2,fm=f(mid);if(fa*fm<=0){b=mid;fb=fm;}else{a=mid;fa=fm;}}return (a+b)/2;};
+ const net0=o=>{const r=model(I,Object.assign({},v,o));return r.core-r.cost;};
+ const bl=[];
+ if(I.hasA){const d=solve(x=>net0({days:x}),-10,20);
+  bl.push(['Sick days avoided per coaching user',d==null?(net0({days:-10})>0?'any value':'not reachable'):(d<=0?'none needed':fx(d,2)+' days'),`${fx(v.days,2)} days now, study 95% CI 0.81 to 4.49`,d!=null&&d<=0.81?'hi':d!=null&&d<=v.days?'':'lo']);}
+ if(I.hasT){const r=solve(x=>net0({rrr:x}),-1,1);
+  bl.push(['Drop in stress-driven leaving',r==null?(net0({rrr:-1})>0?'any value':'not reachable'):(r<0?'none needed':pc(r)),`${pc(v.rrr)} now, study 95% CI 36% to 59%`,r==null||r<=.36?'hi':'']);}
+ {const c=breakEven(I,v);bl.push(['Coaching uptake',c==null?'not reached':fx(c*100,1)+'%',`${Math.round(I.c*100)}% now, Lifeguard reports 5% to 15%`,c!=null&&c<=.05?'hi':c!=null&&c<=I.c?'':'lo']);}
+ if(I.hasA&&I.hasT){const d2=solve(x=>net0({days:x,rrr:0}),-10,40);
+  bl.push(['Sick days avoided per user, if retention gave nothing',d2==null?'not reachable':fx(d2,2)+' days','Study 95% CI 0.81 to 4.49 days',d2!=null&&d2<=0.81?'hi':d2!=null&&d2<=4.49?'':'lo']);
+  const r2=solve(x=>net0({rrr:x,days:0}),0,1);
+  bl.push(['Drop in stress-driven leaving, if sick days gave nothing',r2==null?'not reachable, even at 100%':pc(r2),'Study 95% CI 36% to 59%, half credited',r2!=null&&r2<=.36?'hi':r2!=null&&r2<=.59?'':'lo']);}
+ $('believe').innerHTML='<tr><th>Value</th><th>Break-even</th><th>Where it stands</th></tr>'+bl.map(b=>`<tr><td>${b[0]}</td><td class="num ${b[3]}"><b>${b[1]}</b></td><td style="white-space:normal;text-align:left">${b[2]}</td></tr>`).join('');
+
+ // scaling
+ const sizes=[...new Set([25,100,500,1000,5000,Math.round(I.N)])].sort((a,b)=>a-b);
+ const rc=x=>`<td class="num ${x<0?'lo':'hi'}">${x>=0?'+':''}${Math.round(x*100)}%</td>`;
+ $('scale').innerHTML='<tr><th>Employees</th><th>Price per employee</th><th>Conservative</th><th>Expected</th><th>Optimistic</th><th>Break-even uptake</th></tr>'+
+  sizes.map(n=>{const r=[0,1,2].map(s=>model(I,Object.assign(vals(s),{cs:cur.cs}),I.c,n).roi), b=breakEven(I,Object.assign(vals(1),{cs:cur.cs}),n);
+   return`<tr class="${n===Math.round(I.N)?'you':''}"><td>${n.toLocaleString('en-GB')}${n===Math.round(I.N)?' <small>(you)</small>':''}</td><td class="num">€${price(n).rate}</td>${r.map(rc).join('')}<td class="num">${b==null?'not reached':fx(b*100,1)+'%'}</td></tr>`;}).join('');
+
+ // range
+ const R=[0,1,2].map(s=>model(I,Object.assign(vals(s),{cs:cur.cs})));
+ $('range').innerHTML=[['Conservative',R[0],''],['Expected',R[1],'mid'],['Optimistic',R[2],'']].map(r=>`<div class="${r[2]}"><span>${r[0]}</span><strong class="num">${eur(r[1].core)}</strong><span class="num">€${fx(r[1].back,2)} back per €1</span></div>`).join('');
+
+ // simulation, drawing from the standard errors behind each confidence interval
+ const sim=(sdDays)=>{const rnd=rng(7), d=[];
+  const gz=()=>{let u=0;while(!u)u=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*rnd());};
+  for(let i=0;i<2000;i++){
+   const o=Object.assign({},cur);
+   o.days=2.65+sdDays*gz();
+   o.rrr=1-Math.exp(Math.log(0.509)+0.116*gz());
+   o.r=tri(rnd(),.19,.26,.46); o.m=tri(rnd(),.8,1.28,1.28); o.k=tri(rnd(),1,1.5,2.5); o.kT=tri(rnd(),1,1,1.5);
+   d.push(model(I,o).back);}
+  d.sort((a,b)=>a-b);return{q:p=>d[Math.floor(p*(d.length-1))], ok:d.filter(x=>x>=1).length/d.length};};
+ const A=sim(0.939), S=sim(2.28);
+ const okt=x=>x>=.995?'almost all':pc(x);
+ $('mcNote').innerHTML=`<b>For the average firm</b>, drawing sick days from the standard error of the pooled estimate (0.94 days), Lifeguard pays for itself in ${okt(A.ok)} of 2,000 simulations, with the middle 80% between €${fx(A.q(.1),2)} and €${fx(A.q(.9),2)} per €1.<br><b>For one specific firm</b>, the trials disagree strongly (I² 98%), so the spread between workplaces matters too. Using an approximate prediction SD of 2.28 days, it pays for itself in ${okt(S.ok)} of simulations, between €${fx(S.q(.1),2)} and €${fx(S.q(.9),2)} per €1. This is why a pilot comes first.`;
+
+ // sensitivity
+ const T=KEYS.filter(k=>k!=='g'&&k!=='cs'&&!EV[k].grp).map(k=>({l:EV[k].l,lo:model(I,Object.assign({},v,{[k]:EV[k].v[0]})).back,hi:model(I,Object.assign({},v,{[k]:EV[k].v[2]})).back}));
+ T.push({l:'Share of the turnover gap credited to coaching, 25% to 75%',lo:model(I,Object.assign({},v,{cs:.25})).back,hi:model(I,Object.assign({},v,{cs:.75})).back});
+ const cLo=I.c/2,cHi=Math.min(1,I.c*1.5);
+ T.push({l:`Employees taking coaching, ${Math.round(cLo*100)}% to ${Math.round(cHi*100)}%`,lo:model(I,v,cLo).back,hi:model(I,v,cHi).back});
+ T.forEach(t=>t.sw=Math.abs(t.hi-t.lo));T.sort((a,b)=>b.sw-a.sw);
+ const top=T.filter(t=>t.sw>1e-6).slice(0,5), tmax=Math.max(...top.map(t=>Math.max(t.lo,t.hi)),m.back,1.2)*1.08, Xp=x=>(x/tmax*100).toFixed(2);
+ $('tor').innerHTML='<div style="font-size:13.5px;font-weight:600">What moves the result most</div>'+top.map(t=>{const a=Math.min(t.lo,t.hi),b=Math.max(t.lo,t.hi);
+  return`<div class="tr"><span>${t.l}</span><div class="tbar"><i style="left:${Xp(a)}%;width:${(Xp(b)-Xp(a))}%"></i><s style="left:${Xp(1)}%"></s><u style="left:${Xp(m.back)}%"></u></div><span class="num" style="text-align:right;color:var(--muted)">€${fx(a,2)} to €${fx(b,2)}</span></div>`;}).join('');
+}
+
+const D_=d=>'https://doi.org/'+d;
+const R_={
+ tarro:L('Tarro et al. 2020',D_('10.3390/ijerph17061901')), riley:L('Riley et al. 2011',D_('10.1136/bmj.d549')), inthout:L('IntHout et al. 2016',D_('10.1136/bmjopen-2015-010247')),
+ koop:L('Koopmanschap et al. 1995',D_('10.1016/0167-6296(94)00044-5')), brouwer:L('Brouwer et al. 2023',D_('10.1007/s40273-023-01253-y')), kanters:L('Kanters et al. 2017',D_('10.1371/journal.pone.0187477')),
+ nich:L('Nicholson et al. 2006',D_('10.1002/hec.1052')), borritz:L('Borritz et al. 2006',D_('10.1136/oem.2004.019364')), woods:L('Woods Herron et al. 2026',D_('10.1177/00218863261465035')),
+ jonesQ:L('Jones et al. 2019',D_('10.1093/qje/qjz023')), mowat:L('Mowat et al. 2026',D_('10.1080/13678868.2025.2549541')), blatter:L('Blatter et al. 2012',D_('10.1016/j.euroecorev.2011.08.001')),
+ cochrane:L('Nieuwenhuijsen et al. 2020',D_('10.1002/14651858.CD006237.pub4')), koning:L('Koning and Lindeboom 2015',D_('10.1257/jep.29.2.151')), stewart:L('Stewart et al. 2003',D_('10.1001/jama.289.23.3135')),
+ dyrbye:L('Dyrbye et al. 2019',D_('10.1001/jamainternmed.2019.2425')), theeboom:L('Theeboom et al. 2014',D_('10.1080/17439760.2013.837499')), jonesC:L('Jones, Woods and Guillaume 2016',D_('10.1111/joop.12119')),
+ bakker:L('Bakker et al. 2005',D_('10.1111/j.1365-2648.2005.03494.x')), song:L('Song and Baicker 2019',D_('10.1001/jama.2019.3307')), baicker:L('Baicker et al. 2010',D_('10.1377/hlthaff.2009.0626')),
+ madigan:L('Madigan and Kim 2021',D_('10.1016/j.tate.2021.103425')), backes:L('Backes et al. 2026',D_('10.5271/sjweh.4265')), duijts:L('Duijts et al. 2008',D_('10.1097/JOM.0b013e3181651584')),
+ rongen:L('Rongen et al. 2013',D_('10.1016/j.amepre.2012.12.007')), miraglia:L('Miraglia and Johns 2016',D_('10.1037/ocp0000015')), fleming:L('Fleming 2024',D_('10.1111/irj.12418')),
+ barnett:L('Barnett et al. 2005',D_('10.1093/ije/dyh299')), hemming:L('Hemming et al. 2015',D_('10.1136/bmj.h391')),
+ willard:L('Willard-Grace et al. 2019',D_('10.1370/afm.2338')), arends12:L('Arends et al. 2012',D_('10.1002/14651858.CD006389.pub2')), arends14:L('Arends et al. 2014',D_('10.1136/oemed-2013-101412')),
+ kant:L('Kant et al. 2008',D_('10.1007/s10926-007-9114-z')), lexis:L('Lexis et al. 2011',D_('10.1136/oem.2010.057877')), taimela:L('Taimela et al. 2008',D_('10.1136/oem.2007.032706')),
+ kessler:L('Kessler et al. 2003',D_('10.1097/01.jom.0000052967.43131.51')), theurer:L('Theurer et al. 2018',D_('10.1111/ijmr.12121')),
+ cbsAbs:L('CBS 2024','https://www.cbs.nl/nl-nl/nieuws/2024/29/daling-ziekteverzuim-in-2023-sterkst-in-horeca'), cbsPay:L('CBS table 85919NED','https://opendata.cbs.nl/statline/#/CBS/nl/dataset/85919NED/table'),
+ cbsOccA:L('CBS table 84437NED','https://www.cbs.nl/nl-nl/cijfers/detail/84437NED'), cbsOccP:L('CBS table 84436NED','https://www.cbs.nl/nl-nl/cijfers/detail/84436NED'), cbsOccW:L('CBS table 86355NED','https://www.cbs.nl/nl-nl/cijfers/detail/86355NED'),
+ cbsJob:L('CBS 2025','https://www.cbs.nl/nl-nl/nieuws/2025/33/minder-werknemers-stappen-over-naar-een-andere-werkgever'), cbsVol:L('CBS 2024b','https://www.cbs.nl/nl-nl/longread/statistische-trends/2024/ontslag-naar-reden-initiatief-en-arbeidsmarktpositie-in-2023/3-resultaten'),
+ arbo:L('ArboNed and HumanCapitalCare 2025','https://www.accountant.nl/nieuws/2025/12/meeste-ziekteverzuim-in-2025-door-stress-en-griep/')
+};
+const EVT=[
+ ['Sick days avoided per coaching user','0.81 / 2.65 / 4.49 days','95% CI, SE 0.94 days',R_.tarro+'. Pooled difference in 5 moderate-quality RCTs of workplace interventions. Follow-up ran 3 to 12 months and the paper does not state a common period, so we read it as days a year and do not scale it up. All 11 trials together give 1.56 days (95% CI 0.44 to 2.67), individual interventions 2.09 days (95% CI 1.13 to 3.06). The journal, IJERPH, was removed from Web of Science in March 2023 after a quality review, so the result is cross-checked against randomised trials under Limits.'],
+ ['Spread between workplaces, for a single firm','prediction SD 2.28 days','Approximation from the CI, k = 5, I² 98%','With random effects ('+R_.riley+'), k × SE² ≈ τ² + s² = 5 × 0.94² = 4.41, so τ² ≈ 0.98 × 4.41 = 4.32 and the SD for one new workplace is √(4.32 + 0.88) = 2.28 days. The 95% prediction interval, −4.6 to 9.9 days, includes no effect. In 72.4% of significant Cochrane meta-analyses with heterogeneity the prediction interval also included no effect ('+R_.inthout+').'],
+ ['Value of a sick day','0.80 / 1.28 / 1.28 × daily cost','Two valuation methods','Conservative, the friction cost method ('+R_.koop+') with elasticity 0.8 as applied by '+R_.brouwer+', the approach of the Dutch costing manual ('+R_.kanters+'). Expected, the employer view, '+R_.nich+', median 1.28 times the daily wage from 800 managers across 35 job types, because colleagues and output suffer.'],
+ ['Value of a sick day by type of job','1.00 to 4.47 × daily cost, other jobs 1.28','3-day multiplier per job','Each job type you enter uses its own 3-day cost-of-absence multiplier from table 4 of '+R_.nich+', for example cashier 1.29, bartender 1.24 and maids 1.14. Jobs not in the table, and employees not assigned to a job type, use 1.28. The company multiplier is the average over all employees, weighted by FTE. These are US jobs in the early 2000s, so the ranking between jobs is more reliable than the exact level.'],
+ ['Stress sick leave of a coaching user, ceiling only','1.0 / 1.5 / 2.5×','Ratio across burnout quartiles',R_.borritz+'. 13.6 sick days a year in the highest burnout quartile against 5.4 in the lowest. Used only so nobody avoids more stress sick days than they would have had.'],
+ ['Fewer stress-driven leavers among coaching users','36% / 49% / 59%','95% CI of the risk ratio, SE 0.116 on the log scale',R_.woods+'. 95 of 823 coached employees left against 187 of 824 matched colleagues, risk ratio 0.51 (95% CI 0.41 to 0.64), our calculation from the reported counts. Internal coaches and programmes of up to 18 sessions, against Lifeguard\'s average of 2.6. The authors themselves warn about selection bias.'],
+ ['Coaching users among stress-driven leavers','1.0 / 1.0 / 1.5×','Our assumption','No study measures how strongly coaching users are concentrated among the people who would quit over stress, so the expected value assumes no concentration. Burnout predicted actual exits among clinicians, adjusted odds ratio 1.57 (95% CI 1.02 to 2.40), but not among other staff ('+R_.willard+').'],
+ ['Share of the turnover gap credited to coaching','50%','Our assumption','In '+R_.jonesQ+', a randomised wellness programme had no causal effect on health, spending or productivity, while observational comparisons of the same employees suggested benefits, because healthier people chose to take part. '+R_.mowat+', 412 employees coached by their own manager in a matched design, found no difference in intention to leave.'],
+ ['Cost of replacing a leaver','19% / 26% / 46% of a year','Range in the study, no CI',R_.blatter+'. Swiss firms hiring skilled workers. Average hiring cost of 10 to 17 weeks of wages depending on firm size, marginal cost up to 24 weeks. The study counts weeks of the hire\'s wage, applied here to the employment cost.'],
+ ['Days earlier back at work, per return-to-work case','3 / 15 / 28 days','95% CI of the SMD, on the review\'s own scale',R_.cochrane+'. Psychological interventions for depressed workers, SMD −0.15 (95% CI −0.28 to −0.03), 9 studies, 1,649 people, low certainty, which the review translates as 15 days. It translates SMD 0.25 as 25 days a year, so we convert the interval ends the same way. For workers off sick with adjustment disorders, problem-solving therapy brought partial return 17 days earlier (95% CI 7.5 to 26.5), while full return was not significantly faster (17.7 days, 95% CI −1.9 to 37.4) ('+R_.arends12+'). Therapy, not coaching, so extended return only.'],
+ ['Pay continued during long-term sick leave','70% / 100% / 100%','Legal minimum and common practice','Dutch Civil Code art. 7:629 requires at least 70% of the wage for up to two years of sickness, a duty described by '+R_.koning+'. Many collective agreements pay 100% in the first year.'],
+ ['Employee time in coaching','2.6 hours per user a year','Company can replace it','Lifeguard business case, not peer-reviewed, an average of 2.6 sessions of 60 minutes per user. Valued at the company\'s own hourly employment cost.'],
+ ['Productivity at work, extended return','Company\'s own measure','SMD 0.33, 95% CI 0.07 to 0.59',R_.tarro+' pool 3 moderate-quality trials. The effect did not hold once weaker trials were added, so it stays out of the main return. Measure it with a KPI you already track or the WHO Health and Work Performance Questionnaire ('+R_.kessler+').'],
+ ['Lost output at work, size of the problem only','2 days per stress-related sick day','Half the ratio in the study',R_.stewart+'. 81% of the cost of lost productive time among depressed workers came from reduced performance at work, a ratio of about 4.3 to 1. Used only to size the cost of strain, never in the return.'],
+ ['First-year ramp-up','50% / 75% / 90%','Our assumption','Coaching use builds over the first months.'],
+ ['Sector averages, used when a field is empty','Sick leave 3.3% to 7.4%, employment cost €44,500 to €131,200','Official statistics, one value per sector','Sick leave per sector: '+R_.cbsAbs+', employer-reported, 2023 (all sectors 5.3%). Employment cost: '+R_.cbsPay+', compensation of employees per labour year, 2024 (all sectors €76,200).'],
+ ['Dutch averages, used when a field is empty','Stress share 25% · turnover 15.2% · own choice 67% · stress-driven 40%','Official and industry statistics, one assumption','Stress share: one in four sick days in 2025 ('+R_.arbo+'). Turnover: 3.8% of employees changed employer in the second quarter of 2025, times four, which leaves out exits to no job ('+R_.cbsJob+'). Own choice: 67% of job endings in 2023 ('+R_.cbsVol+'). Stress-driven share of voluntary leavers: our assumption, no Dutch statistic exists.'],
+ ['Differences between role groups','Office 0.87 / manual 1.13 / care 1.19 × sick leave','Simple means of CBS occupation groups','Sick leave ('+R_.cbsOccA+', NEA 2023, all 4.8%): office 4.16%, manual 5.41%, care and service 5.73%. Psychological fatigue from work ('+R_.cbsOccP+', NEA 2025, all 20.7%) sets the stress share: 21.1%, 18.4% and 22.6%. Median hourly wage ('+R_.cbsOccW+', 2025, all €26.90) sets pay: €31.80, €21.20 and €23.65. Employer switches per quarter ('+R_.cbsJob+', all 3.8%) set turnover: 2.83%, 4.97% and 3.97%. Office = occupation groups 031 to 062, 071, 081, 082. Manual = 073 to 078, 091, 112, 121, 122. Care and service = 011, 013, 033, 063, 101 to 105, 111. The groups are always rescaled so that they add up to the company averages.'],
+ ['Existing similar support','Half of the effect counted as new','Our assumption','The trials compare coaching with usual care. Where a firm already runs an employee assistance programme or coaching, part of the effect is already there. Halving is a what-if, not a measured value.']
+];
+$('evidence').innerHTML='<tr><th>Value</th><th>Conservative / expected / optimistic</th><th>How the range is set</th><th>Source</th></tr>'+EVT.map(e=>`<tr><td>${e[0]}</td><td class="n num">${e[1]}</td><td>${e[2]}</td><td>${e[3]}</td></tr>`).join('');
+
+const CHT=[
+ ['1. Fewer sick days','Counted, main','Randomised trials of workplace interventions ('+R_.tarro+'), capped at the users\' own stress sick days.'],
+ ['2. Fewer stress-driven leavers','Counted, main, half','One matched coaching study ('+R_.woods+'). Burnout is linked to intention to quit ('+R_.madigan+') and predicted actual exits among clinicians ('+R_.willard+'). Half credited because matched designs can overstate.'],
+ ['3. Faster return to work','Extended, your data','Cochrane review of psychological treatment ('+R_.cochrane+'). Not coaching, so kept out of the main.'],
+ ['4. Productivity at work','Extended, your data','The trial effect did not hold up ('+R_.tarro+'), although the size of the problem is large ('+R_.stewart+'). Needs a measure you already track.'],
+ ['Burnout, energy, engagement','Inside channels 1 and 2','These are how coaching works ('+R_.dyrbye+', '+R_.theeboom+', '+R_.jonesC+'). Their euro value appears as fewer sick days and leavers, so counting them again would double count.'],
+ ['Colleagues and managers covering absence','Inside channel 1','The 1.28 day value already includes the team cost of an absence ('+R_.nich+').'],
+ ['Strain spreading between colleagues','Not counted','Burnout can spread within teams ('+R_.bakker+'), but the evidence is cross-sectional and gives no euro effect.'],
+ ['Repeat sick leave after return','Not counted, pilot','Problem-solving support from occupational physicians cut recurrent sick leave, odds ratio 0.40 (95% CI 0.20 to 0.81) ('+R_.arends14+'). Delivered by doctors rather than coaches, so it stays out until a pilot shows it for Lifeguard.'],
+ ['Webinars and online content','Cost only','Randomised trials of broad wellness programmes found no effect on absence or other employment outcomes ('+R_.song+', '+R_.jonesQ+'). Time spent on them is counted as a cost if entered.'],
+ ['Medical costs','Not counted','The US savings of $3.27 per $1 ('+R_.baicker+') come from employer-paid health insurance. Dutch employers pay a fixed levy on wages under the Zorgverzekeringswet, so lower medical use saves them nothing.'],
+ ['Long-term disability (WIA)','Not counted','Starts after two years of sickness and matters most for employers who carry their own WGA risk. No coaching study follows people that long.'],
+ ['Employer brand and recruitment','Not counted','Research on employer branding is fragmented and mostly measures perceptions ('+R_.theurer+'), and no study links a coaching benefit to who applies.']
+];
+$('channels').innerHTML='<tr><th>Channel</th><th>In the model</th><th>Why</th></tr>'+CHT.map(e=>`<tr><td>${e[0]}</td><td class="v">${e[1]}</td><td>${e[2]}</td></tr>`).join('');
+
+$('limits').innerHTML=[
+ 'No controlled study of Lifeguard itself exists yet, so every effect is borrowed from comparable programmes, and Lifeguard\'s short format of 2.6 sessions on average is lighter than most of them.',
+ 'The evidence on sick days is mixed. '+R_.tarro+' find 2.65 days in moderate-quality trials and 1.56 across all 11, with very high heterogeneity (I² 98%). '+R_.backes+' find no significant effect of occupational health interventions on sick days (−0.18 days, 95% CI −2.80 to 2.43, 11 studies) and a pooled ROI of 1.92 whose interval includes zero (95% CI −0.34 to 4.17). A coaching RCT that measured absence, '+R_.duijts+', found less burnout and distress but no change in self-reported sick leave. Low-quality studies report effects 2.9 times larger ('+R_.rongen+'), which is why only moderate-quality trials set the expected value. Tarro et al. appeared in IJERPH, which Clarivate removed from Web of Science in March 2023 after a quality review, one more reason to read the break-even values under "What you have to believe" before trusting the expected figure.',
+ 'The trials closest to Lifeguard\'s idea of reaching strained staff early show where effects come from. Screening for high-risk employees and offering them early, structured care cut sick leave by 11 days in Finland ('+R_.taimela+'), by 12 days among Dutch office workers ('+R_.kant+') and by 46% among Dutch employees with depressive complaints ('+R_.lexis+'), while phone advice that only 21% of those invited used did nothing. In a firm with 5.4% sick leave and a 35% stress share, our 2.65 days equals about 36% of a coaching user\'s stress-related sick days, similar in relative size to those trials, which combined screening with care from occupational physicians or psychologists. The one trial of preventive coaching found no fewer sick days ('+R_.duijts+').',
+ 'The retention effect comes from one matched study with longer coaching and internal coaches. Only half is credited, and the case is also shown without it under "What you have to believe".',
+ 'Years 2 and 3 assume the year-1 effect holds, which no trial has followed for that long.',
+ 'Lower sick leave is only good news if people are healthier rather than coming in ill. Absence and working while ill move together (ρ = .35), and stricter absence policies go with more working while ill (ρ = .39) ('+R_.miraglia+'). Coaching works on strain rather than on absence pressure, but a pilot should check both.',
+ 'Cross-sectional data on 46,336 UK workers found that people using individual-level wellbeing offers were no better off than colleagues who did not ('+R_.fleming+'). This is not causal evidence, but it is a reason not to assume success.',
+ 'Replacement cost varies widely by job, so the company\'s own figure is better than any published average.'
+].map(t=>`<p class="note" style="margin:0 0 8px;max-width:none">${t}</p>`).join('');
+
+const REFS=[
+ 'Arends, I., Bruinvels, D. J., Rebergen, D. S., Nieuwenhuijsen, K., Madan, I., Neumeyer-Gromen, A., Bültmann, U., & Verbeek, J. H. (2012). Interventions to facilitate return to work in adults with adjustment disorders. <i>Cochrane Database of Systematic Reviews</i>, 2012(12), CD006389. |10.1002/14651858.CD006389.pub2',
+ 'Arends, I., van der Klink, J. J. L., van Rhenen, W., de Boer, M. R., & Bültmann, U. (2014). Prevention of recurrent sickness absence in workers with common mental disorders: Results of a cluster-randomised controlled trial. <i>Occupational and Environmental Medicine, 71</i>(1), 21–29. |10.1136/oemed-2013-101412',
+ 'Backes, J., Mueller, S. I., Geissler, A., & Ehlig, D. (2026). Occupational health interventions\' impact on absenteeism and economic returns: A systematic review and meta-analysis. <i>Scandinavian Journal of Work, Environment &amp; Health, 52</i>(2), 79–97. |10.5271/sjweh.4265',
+ 'Baicker, K., Cutler, D., & Song, Z. (2010). Workplace wellness programs can generate savings. <i>Health Affairs, 29</i>(2), 304–311. |10.1377/hlthaff.2009.0626',
+ 'Bakker, A. B., Le Blanc, P. M., & Schaufeli, W. B. (2005). Burnout contagion among intensive care nurses. <i>Journal of Advanced Nursing, 51</i>(3), 276–287. |10.1111/j.1365-2648.2005.03494.x',
+ 'Barnett, A. G., van der Pols, J. C., & Dobson, A. J. (2005). Regression to the mean: What it is and how to deal with it. <i>International Journal of Epidemiology, 34</i>(1), 215–220. |10.1093/ije/dyh299',
+ 'Blatter, M., Muehlemann, S., & Schenker, S. (2012). The costs of hiring skilled workers. <i>European Economic Review, 56</i>(1), 20–35. |10.1016/j.euroecorev.2011.08.001',
+ 'Borritz, M., Rugulies, R., Christensen, K. B., Villadsen, E., & Kristensen, T. S. (2006). Burnout as a predictor of self-reported sickness absence among human service workers. <i>Occupational and Environmental Medicine, 63</i>(2), 98–106. |10.1136/oem.2004.019364',
+ 'Brouwer, W. B. F., Verbooy, K., Hoefman, R., & van Exel, J. (2023). Production losses due to absenteeism and presenteeism: The influence of compensation mechanisms and multiplier effects. <i>PharmacoEconomics, 41</i>(9), 1103–1115. |10.1007/s40273-023-01253-y',
+ 'Duijts, S. F. A., Kant, IJ., van den Brandt, P. A., & Swaen, G. M. H. (2008). Effectiveness of a preventive coaching intervention for employees at risk for sickness absence due to psychosocial health complaints. <i>Journal of Occupational and Environmental Medicine, 50</i>(7), 765–776. |10.1097/JOM.0b013e3181651584',
+ 'Dyrbye, L. N., Shanafelt, T. D., Gill, P. R., Satele, D. V., & West, C. P. (2019). Effect of a professional coaching intervention on the well-being and distress of physicians: A pilot randomized clinical trial. <i>JAMA Internal Medicine, 179</i>(10), 1406–1414. |10.1001/jamainternmed.2019.2425',
+ 'Fleming, W. J. (2024). Employee well-being outcomes from individual-level mental health interventions: Cross-sectional evidence from the United Kingdom. <i>Industrial Relations Journal, 55</i>(2), 162–182. |10.1111/irj.12418',
+ 'Hemming, K., Haines, T. P., Chilton, P. J., Girling, A. J., & Lilford, R. J. (2015). The stepped wedge cluster randomised trial: Rationale, design, analysis, and reporting. <i>BMJ, 350</i>, h391. |10.1136/bmj.h391',
+ 'IntHout, J., Ioannidis, J. P. A., Rovers, M. M., & Goeman, J. J. (2016). Plea for routinely presenting prediction intervals in meta-analysis. <i>BMJ Open, 6</i>(7), e010247. |10.1136/bmjopen-2015-010247',
+ 'Jones, D., Molitor, D., & Reif, J. (2019). What do workplace wellness programs do? Evidence from the Illinois Workplace Wellness Study. <i>Quarterly Journal of Economics, 134</i>(4), 1747–1791. |10.1093/qje/qjz023',
+ 'Jones, R. J., Woods, S. A., & Guillaume, Y. R. F. (2016). The effectiveness of workplace coaching: A meta-analysis of learning and performance outcomes from coaching. <i>Journal of Occupational and Organizational Psychology, 89</i>(2), 249–277. |10.1111/joop.12119',
+ 'Kant, IJ., Jansen, N. W. H., van Amelsvoort, L. G. P. M., van Leusden, R., & Berkouwer, A. (2008). Structured early consultation with the occupational physician reduces sickness absence among office workers at high risk for long-term sickness absence: A randomized controlled trial. <i>Journal of Occupational Rehabilitation, 18</i>(1), 79–86. |10.1007/s10926-007-9114-z',
+ 'Kanters, T. A., Bouwmans, C. A. M., van der Linden, N., Tan, S. S., & Hakkaart-van Roijen, L. (2017). Update of the Dutch manual for costing studies in health care. <i>PLOS ONE, 12</i>(11), e0187477. |10.1371/journal.pone.0187477',
+ 'Kessler, R. C., Barber, C., Beck, A., Berglund, P., Cleary, P. D., McKenas, D., Pronk, N., Simon, G., Stang, P., Ustun, T. B., & Wang, P. (2003). The World Health Organization Health and Work Performance Questionnaire (HPQ). <i>Journal of Occupational and Environmental Medicine, 45</i>(2), 156–174. |10.1097/01.jom.0000052967.43131.51',
+ 'Koning, P., & Lindeboom, M. (2015). The rise and fall of disability insurance enrollment in the Netherlands. <i>Journal of Economic Perspectives, 29</i>(2), 151–172. |10.1257/jep.29.2.151',
+ 'Koopmanschap, M. A., Rutten, F. F. H., van Ineveld, B. M., & van Roijen, L. (1995). The friction cost method for measuring indirect costs of disease. <i>Journal of Health Economics, 14</i>(2), 171–189. |10.1016/0167-6296(94)00044-5',
+ 'Lexis, M. A. S., Jansen, N. W. H., Huibers, M. J. H., van Amelsvoort, L. G. P. M., Berkouwer, A., Tjin A Ton, G., van den Brandt, P. A., & Kant, IJ. (2011). Prevention of long-term sickness absence and major depression in high-risk employees: A randomised controlled trial. <i>Occupational and Environmental Medicine, 68</i>(6), 400–407. |10.1136/oem.2010.057877',
+ 'Madigan, D. J., & Kim, L. E. (2021). Towards an understanding of teacher attrition: A meta-analysis of burnout, job satisfaction, and teachers\' intentions to quit. <i>Teaching and Teacher Education, 105</i>, 103425. |10.1016/j.tate.2021.103425',
+ 'Miraglia, M., & Johns, G. (2016). Going to work ill: A meta-analysis of the correlates of presenteeism and a dual-path model. <i>Journal of Occupational Health Psychology, 21</i>(3), 261–283. |10.1037/ocp0000015',
+ 'Mowat, J. W., Haar, J., & Forsyth, D. (2026). The impact of formal workplace coaching on employee outcomes: A matched sample analysis. <i>Human Resource Development International, 29</i>(2), 317–334. |10.1080/13678868.2025.2549541',
+ 'Nicholson, S., Pauly, M. V., Polsky, D., Sharda, C., Szrek, H., & Berger, M. L. (2006). Measuring the effects of work loss on productivity with team production. <i>Health Economics, 15</i>(2), 111–123. |10.1002/hec.1052',
+ 'Nieuwenhuijsen, K., Verbeek, J. H., Neumeyer-Gromen, A., Verhoeven, A. C., Bültmann, U., & Faber, B. (2020). Interventions to improve return to work in depressed people. <i>Cochrane Database of Systematic Reviews</i>, 2020(10), CD006237. |10.1002/14651858.CD006237.pub4',
+ 'Riley, R. D., Higgins, J. P. T., & Deeks, J. J. (2011). Interpretation of random effects meta-analyses. <i>BMJ, 342</i>, d549. |10.1136/bmj.d549',
+ 'Rongen, A., Robroek, S. J. W., van Lenthe, F. J., & Burdorf, A. (2013). Workplace health promotion: A meta-analysis of effectiveness. <i>American Journal of Preventive Medicine, 44</i>(4), 406–415. |10.1016/j.amepre.2012.12.007',
+ 'Song, Z., & Baicker, K. (2019). Effect of a workplace wellness program on employee health and economic outcomes: A randomized clinical trial. <i>JAMA, 321</i>(15), 1491–1501. |10.1001/jama.2019.3307',
+ 'Stewart, W. F., Ricci, J. A., Chee, E., Hahn, S. R., & Morganstein, D. (2003). Cost of lost productive work time among US workers with depression. <i>JAMA, 289</i>(23), 3135–3144. |10.1001/jama.289.23.3135',
+ 'Taimela, S., Malmivaara, A., Justén, S., Läärä, E., Sintonen, H., Tiekso, J., & Aro, T. (2008). The effectiveness of two occupational health intervention programmes in reducing sickness absence among employees at risk: Two randomised controlled trials. <i>Occupational and Environmental Medicine, 65</i>(4), 236–241. |10.1136/oem.2007.032706',
+ 'Tarro, L., Llauradó, E., Ulldemolins, G., Hermoso, P., & Solà, R. (2020). Effectiveness of workplace interventions for improving absenteeism, productivity, and work ability of employees: A systematic review and meta-analysis of randomized controlled trials. <i>International Journal of Environmental Research and Public Health, 17</i>(6), 1901. |10.3390/ijerph17061901',
+ 'Theeboom, T., Beersma, B., & van Vianen, A. E. M. (2014). Does coaching work? A meta-analysis on the effects of coaching on individual level outcomes in an organizational context. <i>Journal of Positive Psychology, 9</i>(1), 1–18. |10.1080/17439760.2013.837499',
+ 'Theurer, C. P., Tumasjan, A., Welpe, I. M., & Lievens, F. (2018). Employer branding: A brand equity-based literature review and research agenda. <i>International Journal of Management Reviews, 20</i>(1), 155–179. |10.1111/ijmr.12121',
+ 'Willard-Grace, R., Knox, M., Huang, B., Hammer, H., Kivlahan, C., & Grumbach, K. (2019). Burnout and health care workforce turnover. <i>Annals of Family Medicine, 17</i>(1), 36–41. |10.1370/afm.2338',
+ 'Woods Herron, A., Cavanaugh, K. J., DeVeau, M. F., & Holladay, C. L. (2026). Workplace coaching: The impact on individual and organizational outcomes. <i>Journal of Applied Behavioral Science</i>, advance online publication. |10.1177/00218863261465035'
+];
+$('refs').innerHTML='<ol class="note" style="max-width:none;margin:0;padding-left:18px">'+REFS.map(r=>{const [t,d]=r.split('|');return`<li style="margin-bottom:6px">${t}${L('https://doi.org/'+d,'https://doi.org/'+d)}</li>`;}).join('')+'</ol>'+
+ '<p class="note" style="max-width:none">Legal and company sources, not peer-reviewed: Dutch Civil Code art. 7:629 (pay during sickness), Zorgverzekeringswet (employer health levy), Wet op de ondernemingsraden art. 27 (works council consent), GDPR art. 9 (health data), Lifeguard NOW business case and 2026 price list.</p><p class="note" style="max-width:none">Statistics used for averages: '+[R_.cbsAbs,R_.cbsPay,R_.cbsOccA,R_.cbsOccP,R_.cbsOccW,R_.cbsJob,R_.cbsVol,R_.arbo].join(' · ')+'.</p>';
+
+document.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>{setScenario(+b.dataset.sc);render();}));
+KEYS.forEach(k=>$('p_'+k).addEventListener('input',e=>{cur[k]=+e.target.value;custom=true;}));
+$('reset').addEventListener('click',()=>{setScenario(sc);render();});
+$('f').addEventListener('input',render);
+$('f').addEventListener('change',render);
+document.querySelectorAll('.presets button').forEach(b=>b.addEventListener('click',()=>{$('coach').value=b.dataset.v;render();}));
+$('f').addEventListener('submit',e=>e.preventDefault());
+function clearAll(){HTMLFormElement.prototype.reset.call($('f'));jtab=0;setScenario(sc);}
+function loadHeijmans(){clearAll();
+ Object.entries({name:'Royal Heijmans N.V.',n:5905,pay:105267,abs:5.24,psy:25,turn:9.55,vol:67,str:40}).forEach(([k,v])=>{$(k).value=v;});
+ $('sector').value='6'; setScenario(1); render();
+ if(window.matchMedia('(max-width:900px)').matches)document.querySelector('.sheet').scrollIntoView({behavior:'smooth'});}
+$('exHeij').addEventListener('click',loadHeijmans); $('exHeij2').addEventListener('click',loadHeijmans);
+$('clearAll').addEventListener('click',()=>{clearAll();render();});
+$('jtabs').addEventListener('click',e=>{const b=e.target.closest('button[data-j]');if(!b)return;jtab=+b.dataset.j;render();$('job_'+jtab).focus();});
+$('jtabs').addEventListener('keydown',e=>{const n=+$('njobs').value;if(!n||!['ArrowRight','ArrowLeft'].includes(e.key))return;jtab=(jtab+(e.key==='ArrowRight'?1:n-1))%n;render();$('jt_'+jtab).focus();});
+$('njobs').addEventListener('change',()=>{const n=+$('njobs').value;if(n){jtab=Math.min(jtab,n-1);for(let i=0;i<n;i++){if(!$('job_'+i).value){jtab=i;break;}}}render();});
+$('copy').addEventListener('click',()=>{const t=$('prompt'),fallback=()=>{t.select();$('importMsg').textContent='Select the text above and copy it.';};
+ try{navigator.clipboard.writeText(t.value).then(()=>$('importMsg').textContent='Instruction copied.',fallback);}catch(e){fallback();}});
+$('import').addEventListener('click',()=>{
+ try{const d=JSON.parse($('json').value.replace(/```json|```/g,'').trim());
+  const set=(id,x)=>{if(x!==null&&x!==undefined&&isFinite(x))$(id).value=x;};
+  if(d.company)$('name').value=d.company;
+  set('n',d.employees_fte);set('hc',d.headcount);if(d.employment_costs_eur&&d.employees_fte)set('pay',Math.round(d.employment_costs_eur/d.employees_fte));set('abs',d.sick_leave_pct);set('turn',d.turnover_pct);set('vol',d.voluntary_share_pct);
+  const miss=[['sick_leave_pct','sick leave rate'],['turnover_pct','turnover'],['voluntary_share_pct','share who left by choice']].filter(x=>d[x[0]]==null).map(x=>x[1]);
+  $('importMsg').textContent='Form filled. Still needed from the company: share of sick leave due to stress, share of leavers naming stress'+(miss.length?', '+miss.join(', '):'')+'.'+(d.source_pages?' Report pages '+d.source_pages+'.':'');
+  render();
+ }catch(e){$('importMsg').textContent='That text is not in the expected format. Paste only the part from { to }.';}
+});
+setScenario(1);render();
+})();
+</script>
+
+</body>
+</html>
